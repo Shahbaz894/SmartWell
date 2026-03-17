@@ -1,0 +1,761 @@
+2026-03-14 12:22:48,501 - ERROR - Database initialization failed: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: FATAL:  database "tubewell" does not exist
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-03-14 12:22:48,501 - INFO - Shutdown cleanup (if any)
+2026-03-14 12:26:40,011 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-14 12:26:40,011 - INFO - Shutdown cleanup (if any)
+2026-03-14 12:30:35,526 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-14 12:30:35,526 - INFO - Shutdown cleanup (if any)
+2026-03-14 12:30:36,441 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-14 12:30:36,441 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:07:11,084 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:07:11,135 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:28:18,090 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:28:18,091 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:44:13,253 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:44:13,253 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:44:22,084 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:44:22,084 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:44:26,682 - ERROR - Database initialization failed: Foreign key associated with column 'motor_telemetry.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:44:26,682 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:44:30,811 - ERROR - Database initialization failed: Foreign key associated with column 'motor_logs.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:44:30,811 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:44:37,967 - ERROR - Database initialization failed: Foreign key associated with column 'motor_logs.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:44:37,967 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:50:24,821 - ERROR - Database initialization failed: Foreign key associated with column 'motor_logs.device_id' could not find table 'devices' with which to generate a foreign key to target column 'id'
+2026-03-17 09:50:24,821 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:50:56,220 - INFO - Database tables created (if not exist)
+2026-03-17 09:50:56,323 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:50:57,827 - INFO - Database tables created (if not exist)
+2026-03-17 09:51:05,581 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:51:07,043 - INFO - Database tables created (if not exist)
+2026-03-17 09:51:15,026 - INFO - Shutdown cleanup (if any)
+2026-03-17 09:51:28,172 - INFO - Database tables created (if not exist)
+2026-03-17 09:51:45,217 - INFO - Root endpoint accessed
+2026-03-17 10:11:13,726 - ERROR - Unexpected error during registration for email=test@gmail.com: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+2026-03-17 10:14:58,822 - ERROR - Unexpected error creating device for user_id="asdf12345": 'Device' object has no attribute 'name'
+2026-03-17 10:15:57,618 - ERROR - Failed to fetch devices for user_id="asdf12345": (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: ""asdf12345""
+LINE 3: WHERE devices.user_id = '"asdf12345"'::UUID
+                                ^
+
+[SQL: SELECT devices.id AS devices_id, devices.user_id AS devices_user_id, devices.device_name AS devices_device_name, devices.device_uid AS devices_device_uid, devices.sim_number AS devices_sim_number, devices.location AS devices_location, devices.device_secret AS devices_device_secret, devices.created_at AS devices_created_at 
+FROM devices 
+WHERE devices.user_id = %(user_id_1)s::UUID]
+[parameters: {'user_id_1': '"asdf12345"'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 10:15:57,619 - ERROR - Failed to fetch devices for user_id="asdf12345": Database error: failed to fetch devices for user_id "asdf12345": Application error
+2026-03-17 10:19:00,797 - INFO - Shutdown cleanup (if any)
+2026-03-17 10:19:02,389 - INFO - Database tables created (if not exist)
+2026-03-17 10:19:53,244 - ERROR - Unexpected error during registration for email=test@gmail.com: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+2026-03-17 10:26:10,640 - INFO - Shutdown cleanup (if any)
+2026-03-17 10:30:12,581 - INFO - Database tables created (if not exist)
+2026-03-17 10:31:04,545 - INFO - User created: id=f404c1bf-0855-48d4-b34b-03b39da7270e, email=test@gmail.com
+2026-03-17 10:31:04,546 - INFO - User registered: id=f404c1bf-0855-48d4-b34b-03b39da7270e, email=test@gmail.com
+2026-03-17 10:31:04,548 - INFO - User registered successfully: email=test@gmail.com
+2026-03-17 10:42:33,990 - INFO - Fetched user by email: test@gmail.com
+2026-03-17 10:42:34,529 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 10:42:34,530 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 10:45:40,675 - ERROR - Unexpected error creating device for user_id="f404c1bf-0855-48d4-b34b-03b39da7270e": 'Device' object has no attribute 'name'
+2026-03-17 10:57:28,352 - INFO - Shutdown cleanup (if any)
+2026-03-17 10:57:29,316 - INFO - Database tables created (if not exist)
+2026-03-17 12:21:47,096 - INFO - Shutdown cleanup (if any)
+2026-03-17 12:21:50,375 - INFO - Database tables created (if not exist)
+2026-03-17 12:48:58,713 - ERROR - Failed to create user test@gmail.com: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(test@gmail.com) already exists.
+
+[SQL: INSERT INTO users (id, name, email, password_hash, google_id) VALUES (%(id)s::UUID, %(name)s, %(email)s, %(password_hash)s, %(google_id)s) RETURNING users.created_at]
+[parameters: {'id': UUID('b7e343bb-32b2-4970-8a88-542256ecda48'), 'name': 'shahbaz', 'email': 'test@gmail.com', 'password_hash': '$2b$12$Vsztv/eiODLzIV9QXykmr.yCeEPC2HRGpuQarw4HULH55YSHyfWbW', 'google_id': None}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 12:48:58,715 - ERROR - Registration failed for email=test@gmail.com: Database error: failed to create user test@gmail.com: Application error
+2026-03-17 12:49:38,948 - INFO - Fetched user by email: test@gmail.com
+2026-03-17 12:49:39,274 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 12:49:39,274 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 12:53:16,130 - ERROR - Unexpected error creating device for user_id="f404c1bf-0855-48d4-b34b-03b39da7270e": 'Device' object has no attribute 'name'
+2026-03-17 12:57:34,946 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 12:57:37,322 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 12:58:00,475 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:01:27,206 - INFO - Fetched user by email: test@gmail.com
+2026-03-17 13:01:27,520 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:01:27,521 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:02:05,410 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:05:48,038 - INFO - Shutdown cleanup (if any)
+2026-03-17 13:05:50,661 - INFO - Database tables created (if not exist)
+2026-03-17 13:06:18,363 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:06:44,045 - ERROR - Failed to create user test@gmail.com: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(test@gmail.com) already exists.
+
+[SQL: INSERT INTO users (id, name, email, password_hash, google_id) VALUES (%(id)s::UUID, %(name)s, %(email)s, %(password_hash)s, %(google_id)s) RETURNING users.created_at]
+[parameters: {'id': UUID('f040efb6-1328-4c8d-8d17-9f07434a6d6b'), 'name': 'shahbaz', 'email': 'test@gmail.com', 'password_hash': '$2b$12$EGRrhX4LCqitbdSHS3LjxujSMtMWGWoxZcDBifYsu91z/hPiIX7b6', 'google_id': None}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 13:06:44,045 - ERROR - Registration failed for email=test@gmail.com: Database error: failed to create user test@gmail.com: Application error
+2026-03-17 13:06:50,907 - INFO - Fetched user by email: test@gmail.com
+2026-03-17 13:06:51,219 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:06:51,219 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:07:01,954 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:07:24,870 - INFO - Shutdown cleanup (if any)
+2026-03-17 13:07:32,663 - INFO - Database tables created (if not exist)
+2026-03-17 13:08:07,351 - ERROR - Failed to create user test@gmail.com: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(test@gmail.com) already exists.
+
+[SQL: INSERT INTO users (id, name, email, password_hash, google_id) VALUES (%(id)s::UUID, %(name)s, %(email)s, %(password_hash)s, %(google_id)s) RETURNING users.created_at]
+[parameters: {'id': UUID('5a946892-7e82-4119-89a2-532f73e1cb4e'), 'name': 'shahbaz', 'email': 'test@gmail.com', 'password_hash': '$2b$12$e5XEO9uhsn1J3S7qFKcjzuV43TqijB0Y/YwLiDssOv.csfkuZPO1G', 'google_id': None}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 13:08:07,352 - ERROR - Registration failed for email=test@gmail.com: Database error: failed to create user test@gmail.com: Application error
+2026-03-17 13:08:50,147 - INFO - Fetched user by email: test@gmail.com
+2026-03-17 13:08:50,474 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:08:50,475 - INFO - User logged in successfully: email=test@gmail.com
+2026-03-17 13:09:35,137 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:16:38,392 - INFO - Shutdown cleanup (if any)
+2026-03-17 13:16:39,462 - INFO - Database tables created (if not exist)
+2026-03-17 13:17:24,250 - ERROR - Unexpected error creating device for user_id=f404c1bf-0855-48d4-b34b-03b39da7270e: 'Device' object has no attribute 'name'
+2026-03-17 13:19:40,474 - INFO - Shutdown cleanup (if any)
+2026-03-17 13:19:41,488 - INFO - Database tables created (if not exist)
+2026-03-17 15:47:15,698 - INFO - Shutdown cleanup (if any)
+2026-03-17 15:47:23,987 - INFO - Database tables created (if not exist)
+2026-03-17 15:48:31,670 - INFO - User created: id=83d2007a-1968-465c-8a37-57011682cb99, email=shahbaz@example.com
+2026-03-17 15:48:31,716 - INFO - User registered: id=83d2007a-1968-465c-8a37-57011682cb99, email=shahbaz@example.com
+2026-03-17 15:48:31,717 - INFO - User registered successfully: email=shahbaz@example.com
+2026-03-17 15:48:54,526 - INFO - Fetched user by email: shahbaz@example.com
+2026-03-17 15:48:55,022 - INFO - User logged in successfully: email=shahbaz@example.com
+2026-03-17 15:48:55,024 - INFO - User logged in successfully: email=shahbaz@example.com
+2026-03-17 15:50:39,744 - ERROR - Unexpected error creating device for user_id=83d2007a-1968-465c-8a37-57011682cb99: 'Device' object has no attribute 'name'
+2026-03-17 15:57:31,064 - INFO - Shutdown cleanup (if any)
+2026-03-17 15:57:32,445 - INFO - Database tables created (if not exist)
+2026-03-17 15:57:32,558 - INFO - Shutdown cleanup (if any)
+2026-03-17 15:57:33,722 - INFO - Database tables created (if not exist)
+2026-03-17 15:59:22,213 - INFO - Shutdown cleanup (if any)
+2026-03-17 15:59:23,649 - INFO - Database tables created (if not exist)
+2026-03-17 15:59:31,935 - ERROR - Unexpected error creating device for user_id=83d2007a-1968-465c-8a37-57011682cb99: DeviceService.create_device() got an unexpected keyword argument 'device_name'
+2026-03-17 16:02:36,561 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:02:37,936 - INFO - Database tables created (if not exist)
+2026-03-17 16:02:55,470 - INFO - Attempting to create device: ESP32_002 for user: 83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:02:55,491 - ERROR - Failed to create device: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_002"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('ESP32_002...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'ESP32_002', 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor 2', 'device_uid': 'ESP32_002', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'cpDmCLwvZwx01Hr16hoYw0ydXUW28EYMr7IUhAuj15M'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 16:02:55,493 - WARNING - Application error during device creation: Database error: failed to create device: Application error
+2026-03-17 16:14:01,275 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:15:45,661 - INFO - Database tables created (if not exist)
+2026-03-17 16:16:05,591 - INFO - Creating device UID=ESP32_002 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:16:05,689 - INFO - Device created: id=c458cf2c-3c56-4f34-9c54-984d8a03b13a, name=TubeWell Motor 2
+2026-03-17 16:16:05,690 - INFO - Device created successfully: c458cf2c-3c56-4f34-9c54-984d8a03b13a
+2026-03-17 16:16:05,695 - ERROR - Unhandled exception: 2 validation errors:
+  {'type': 'string_type', 'loc': ('response', 'id'), 'msg': 'Input should be a valid string', 'input': UUID('c458cf2c-3c56-4f34-9c54-984d8a03b13a')}
+  {'type': 'string_type', 'loc': ('response', 'user_id'), 'msg': 'Input should be a valid string', 'input': UUID('83d2007a-1968-465c-8a37-57011682cb99')}
+
+  File "E:\SmartWell\app\api\device_routes.py", line 50, in create_device
+    POST /devices/
+2026-03-17 16:16:07,067 - INFO - Creating device UID=ESP32_002 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:16:07,071 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('a0726ca6-754c-434d-a80b-a7b7fa212973'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor 2', 'device_uid': 'ESP32_002', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'VZjD3yfng5hJv7eiL4xOhkmJ9NvlnafypGJZv4-xVqQ'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:16:07,072 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 76, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('a0726ca6-754c-434d-a80b-a7b7fa212973'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor 2', 'device_uid': 'ESP32_002', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'VZjD3yfng5hJv7eiL4xOhkmJ9NvlnafypGJZv4-xVqQ'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 85, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:16:31,685 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:16:33,207 - INFO - Database tables created (if not exist)
+2026-03-17 16:16:38,930 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:16:40,210 - INFO - Database tables created (if not exist)
+2026-03-17 16:16:45,691 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:16:51,989 - INFO - Database tables created (if not exist)
+2026-03-17 16:17:16,906 - INFO - Creating device UID=ESP32_002 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:17:16,925 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('a324abe3-55ee-410d-8019-e592be576ac2'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor 2', 'device_uid': 'ESP32_002', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': '5uBVQd21N-J7QGjHvBzqcJ0zHBkcV3CBWyDwCwpe-Ss'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:17:16,926 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_002) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('a324abe3-55ee-410d-8019-e592be576ac2'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor 2', 'device_uid': 'ESP32_002', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': '5uBVQd21N-J7QGjHvBzqcJ0zHBkcV3CBWyDwCwpe-Ss'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:20:00,709 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:20:02,090 - INFO - Database tables created (if not exist)
+2026-03-17 16:21:05,656 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:21:05,754 - INFO - Device created: id=786e9ea0-438c-4b2e-bd40-fdc9dacd711a, name=TubeWell Motor
+2026-03-17 16:21:05,755 - INFO - Device created successfully: 786e9ea0-438c-4b2e-bd40-fdc9dacd711a
+2026-03-17 16:21:05,759 - ERROR - Unhandled exception: 2 validation errors:
+  {'type': 'string_type', 'loc': ('response', 'id'), 'msg': 'Input should be a valid string', 'input': UUID('786e9ea0-438c-4b2e-bd40-fdc9dacd711a')}
+  {'type': 'string_type', 'loc': ('response', 'user_id'), 'msg': 'Input should be a valid string', 'input': UUID('83d2007a-1968-465c-8a37-57011682cb99')}
+
+  File "E:\SmartWell\app\api\device_routes.py", line 13, in create_device
+    POST /devices/
+2026-03-17 16:23:50,470 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:23:51,800 - INFO - Database tables created (if not exist)
+2026-03-17 16:23:59,537 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:23:59,556 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('f774a7ba-fcd7-40dd-a664-6258b9aa3abf'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'j2_ANp4cAUbLaQ487tYKP6SeX_cGWnu5IP7BzkzFVQU'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:23:59,557 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('f774a7ba-fcd7-40dd-a664-6258b9aa3abf'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'j2_ANp4cAUbLaQ487tYKP6SeX_cGWnu5IP7BzkzFVQU'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:27:03,173 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:27:04,509 - INFO - Database tables created (if not exist)
+2026-03-17 16:27:09,438 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:27:09,457 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('f57735cf-573b-44ec-a969-f435c1f9d63d'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'WLqRUR1DVz2ap4q5G-anhm97N5xETwObhHxuPdkN7AY'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:27:09,458 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('f57735cf-573b-44ec-a969-f435c1f9d63d'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'WLqRUR1DVz2ap4q5G-anhm97N5xETwObhHxuPdkN7AY'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:27:11,118 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:27:11,122 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('0367402c-91b3-4003-ba4a-ba8c5f0b2cbc'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'PRFyqBQQMcGiaPIZEYw7_wOKHHExXq_osr1q9GWI0FE'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:27:11,123 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('0367402c-91b3-4003-ba4a-ba8c5f0b2cbc'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'PRFyqBQQMcGiaPIZEYw7_wOKHHExXq_osr1q9GWI0FE'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:27:22,034 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:27:23,324 - INFO - Database tables created (if not exist)
+2026-03-17 16:27:29,920 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:27:29,938 - ERROR - Failed to create device: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('4799731f-4e81-4941-bd22-e96ef260c94e'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'uuAOngWW9urjAvHJp42kmNP8vjejJXG6w6voOZM8XhY'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 16:27:29,939 - ERROR - Unexpected error: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UniqueViolation: duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "devices_device_uid_key"
+DETAIL:  Key (device_uid)=(ESP32_003) already exists.
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': UUID('4799731f-4e81-4941-bd22-e96ef260c94e'), 'user_id': '83d2007a-1968-465c-8a37-57011682cb99', 'device_name': 'TubeWell Motor', 'device_uid': 'ESP32_003', 'sim_number': '03001234567', 'location': 'Farm 1', 'device_secret': 'uuAOngWW9urjAvHJp42kmNP8vjejJXG6w6voOZM8XhY'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 36, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-17 16:34:52,982 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:34:54,372 - INFO - Database tables created (if not exist)
+2026-03-17 16:35:08,362 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:35:08,362 - ERROR - Unexpected error: 'DeviceRepository' object has no attribute 'get_by_uid'
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    existing = self.repo.get_by_uid(device_data.device_uid)
+               ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DeviceRepository' object has no attribute 'get_by_uid'
+2026-03-17 16:35:12,606 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:35:12,607 - ERROR - Unexpected error: 'DeviceRepository' object has no attribute 'get_by_uid'
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    existing = self.repo.get_by_uid(device_data.device_uid)
+               ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DeviceRepository' object has no attribute 'get_by_uid'
+2026-03-17 16:35:17,841 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:35:19,116 - INFO - Database tables created (if not exist)
+2026-03-17 16:36:48,449 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:36:49,776 - INFO - Database tables created (if not exist)
+2026-03-17 16:38:54,065 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:38:56,681 - INFO - Database tables created (if not exist)
+2026-03-17 16:39:04,493 - INFO - Shutdown cleanup (if any)
+2026-03-17 16:39:12,239 - INFO - Database tables created (if not exist)
+2026-03-17 16:39:36,205 - INFO - Creating device UID=ESP32_003 for user=83d2007a-1968-465c-8a37-57011682cb99
+2026-03-17 16:39:36,230 - ERROR - Unexpected error: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 25, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-17 16:40:22,958 - INFO - User created: id=20c70312-afd2-401c-9f6a-13194f1d9c50, email=shahbaz11@example.com
+2026-03-17 16:40:22,958 - INFO - User registered: id=20c70312-afd2-401c-9f6a-13194f1d9c50, email=shahbaz11@example.com
+2026-03-17 16:40:22,959 - INFO - User registered successfully: email=shahbaz11@example.com
+2026-03-17 16:40:54,528 - INFO - Fetched user by email: shahbaz11@example.com
+2026-03-17 16:40:55,018 - INFO - User logged in successfully: email=shahbaz11@example.com
+2026-03-17 16:40:55,019 - INFO - User logged in successfully: email=shahbaz11@example.com
+2026-03-17 16:41:42,803 - INFO - Creating device UID=ESP32_004 for user=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 16:41:42,878 - INFO - Device created: id=c301184d-613c-4328-8f13-8dc7d0091421, name=TubeWell Motor
+2026-03-17 16:41:42,879 - INFO - Device created successfully: c301184d-613c-4328-8f13-8dc7d0091421
+2026-03-17 16:49:06,651 - INFO - Fetched 0 devices for user_id=3fa85f64-5717-4562-b3fc-2c963f66afa6
+2026-03-17 16:52:50,807 - INFO - Fetched 0 devices for user_id=c301184d-613c-4328-8f13-8dc7d0091421
+2026-03-17 16:53:18,878 - INFO - Fetched 1 devices for user_id=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 16:54:34,290 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004'::UUID AND motor_log...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s::UUID AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 16:54:34,291 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 16:55:11,664 - INFO - Shutdown cleanup (if any)
