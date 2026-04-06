@@ -1,14 +1,19 @@
+
 # app/models/motor_log.py
-from sqlalchemy import Column, String, TIMESTAMP, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, TIMESTAMP, Integer
 from app.db.base import Base
+from datetime import datetime
 import uuid
 
 class MotorLog(Base):
     __tablename__ = "motor_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    # Use a string ID for simplicity
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Device ID stored as string to match actual ESP32 device ID
+    device_id = Column(String, nullable=False)
+
     start_time = Column(TIMESTAMP, nullable=False)
     end_time = Column(TIMESTAMP)
     duration_minutes = Column(Integer)

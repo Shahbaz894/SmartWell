@@ -15,20 +15,19 @@ class DeviceService:
 
     def create_device(self, user_id: str, device_data: DeviceCreate):
         try:
-            logger.info(
-                "Creating device UID=%s for user=%s",
-                device_data.device_uid,
-                user_id
-            )
+            logger.info("Creating device with custom ID: %s", device_data.device_uid)
+            
+            # Check if device already exists
             existing = self.repo.get_by_uid(device_data.device_uid)
             if existing:
-             raise AppException("Device with this UID already exists")
+                raise AppException("Device with this UID already exists")
 
-            # ✅ generate secure secret
             generated_secret = secrets.token_urlsafe(32)
 
             new_device = Device(
-                user_id=user_id,  # ✅ keep UUID
+                # Use the custom ID (e.g., SMSWELL1001) as the Primary Key
+                id=device_data.device_uid, 
+                user_id=user_id,
                 device_name=device_data.device_name,
                 device_uid=device_data.device_uid,
                 sim_number=device_data.sim_number,
@@ -37,20 +36,11 @@ class DeviceService:
             )
 
             created_device = self.repo.create_device(new_device)
-
-            logger.info("Device created successfully: %s", created_device.id)
             return created_device
 
-        except SQLAlchemyError as e:
-            # logger.error("DB error: %s", str(e))
-            # raise AppException("Database error while creating device")
-            # except Exception as e:
-            logger.error("Unexpected error in DeviceService.create_device: %s", str(e), exc_info=True)
-            raise AppException(str(e))   # 👈 SHOW REAL ERROR
-
         except Exception as e:
-            logger.error("Unexpected error: %s", str(e), exc_info=True)
-            raise AppException("Unexpected error while creating device")
+            logger.error("Error in DeviceService: %s", str(e), exc_info=True)
+            raise AppException(str(e))
 
     def get_user_devices(self, user_id: str):
         try:

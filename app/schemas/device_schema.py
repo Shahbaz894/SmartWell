@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+from uuid import UUID
+
 
 class DeviceCreate(BaseModel):
     device_name: str
@@ -18,14 +20,9 @@ class DeviceUpdate(BaseModel):
     location: Optional[str]
 
 
-from pydantic import BaseModel
-from uuid import UUID
-from typing import Optional
-from datetime import datetime
-
 class DeviceResponse(BaseModel):
-    id: UUID
-    user_id: UUID
+    id: str  # Changed from UUID to str
+    user_id: UUID  # Changed from UUID to str
     device_name: str
     device_uid: str
     sim_number: Optional[str]
@@ -33,4 +30,6 @@ class DeviceResponse(BaseModel):
     created_at: Optional[datetime]
 
     class Config:
-        from_attributes = True   # ✅ IMPORTANT (Pydantic v2)
+        from_attributes = True
+
+    

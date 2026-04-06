@@ -759,3 +759,690 @@ WHERE motor_logs.device_id = %(device_id_1)s::UUID AND motor_logs.end_time IS NU
 (Background on this error at: https://sqlalche.me/e/20/9h9h)
 2026-03-17 16:54:34,291 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
 2026-03-17 16:55:11,664 - INFO - Shutdown cleanup (if any)
+2026-03-17 17:24:59,837 - INFO - Database tables created (if not exist)
+2026-03-17 17:25:19,615 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004'::UUID AND motor_log...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s::UUID AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 17:25:19,616 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 17:25:56,977 - INFO - No running motor log found for device_id=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 17:25:56,987 - ERROR - Failed to create motor log for device 20c70312-afd2-401c-9f6a-13194f1d9c50: (psycopg2.errors.ForeignKeyViolation) insert or update on table "motor_logs" violates foreign key constraint "motor_logs_device_id_fkey"
+DETAIL:  Key (device_id)=(20c70312-afd2-401c-9f6a-13194f1d9c50) is not present in table "devices".
+
+[SQL: INSERT INTO motor_logs (id, device_id, start_time, end_time, duration_minutes, trigger_type) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(start_time)s, %(end_time)s, %(duration_minutes)s, %(trigger_type)s) RETURNING motor_logs.created_at]
+[parameters: {'id': UUID('8c91136d-ee2b-4833-b127-84e1a9df68c3'), 'device_id': '20c70312-afd2-401c-9f6a-13194f1d9c50', 'start_time': datetime.datetime(2026, 3, 17, 12, 25, 56, 977845), 'end_time': None, 'duration_minutes': None, 'trigger_type': 'manual'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 17:25:56,987 - ERROR - Failed to start motor for device_id=20c70312-afd2-401c-9f6a-13194f1d9c50: Database error: failed to create motor log for device 20c70312-afd2-401c-9f6a-13194f1d9c50: Application error
+2026-03-17 17:26:20,936 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004'::UUID AND motor_log...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s::UUID AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 17:26:20,936 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 19:15:01,841 - INFO - Shutdown cleanup (if any)
+2026-03-17 19:15:03,302 - INFO - Database tables created (if not exist)
+2026-03-17 19:15:41,624 - INFO - Fetched 1 devices for user_id=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 19:15:59,776 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:15:59,776 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 19:22:29,053 - INFO - Shutdown cleanup (if any)
+2026-03-17 19:22:30,483 - INFO - Database tables created (if not exist)
+2026-03-17 19:22:42,727 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:22:42,728 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 19:22:50,618 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:22:50,619 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 19:22:54,895 - ERROR - Failed to fetch running motor log for device ESP32_004: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_004"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_004' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_004', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:22:54,896 - ERROR - Failed to start motor for device_id=ESP32_004: Database error: failed to fetch running motor log for device ESP32_004: Application error
+2026-03-17 19:23:23,015 - INFO - Shutdown cleanup (if any)
+2026-03-17 19:23:24,433 - INFO - Database tables created (if not exist)
+2026-03-17 19:24:48,341 - INFO - Creating device UID=ESP32_005 for user=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 19:24:48,415 - INFO - Device created: id=2c5766b1-54a3-40df-b3e5-0da08c528438, name=TubeWell Motor
+2026-03-17 19:24:48,416 - INFO - Device created successfully: 2c5766b1-54a3-40df-b3e5-0da08c528438
+2026-03-17 19:25:06,859 - INFO - Fetched 2 devices for user_id=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 19:25:25,507 - ERROR - Failed to fetch running motor log for device ESP32_005: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_005"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_005' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_005', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:25:25,508 - ERROR - Failed to start motor for device_id=ESP32_005: Database error: failed to fetch running motor log for device ESP32_005: Application error
+2026-03-17 19:45:19,232 - INFO - Shutdown cleanup (if any)
+2026-03-17 19:45:20,467 - INFO - Database tables created (if not exist)
+2026-03-17 19:46:08,860 - INFO - Shutdown cleanup (if any)
+2026-03-17 19:46:10,216 - INFO - Database tables created (if not exist)
+2026-03-17 19:46:41,044 - ERROR - Failed to create user shahbaz11@example.com: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(shahbaz11@example.com) already exists.
+
+[SQL: INSERT INTO users (id, name, email, password_hash, google_id) VALUES (%(id)s::UUID, %(name)s, %(email)s, %(password_hash)s, %(google_id)s) RETURNING users.created_at]
+[parameters: {'id': UUID('e08bcfff-51bb-49d7-8baf-8fb6d4b064ee'), 'name': 'shahbaz11', 'email': 'shahbaz11@example.com', 'password_hash': '$2b$12$siasDGUTAzIH41fWXEwGHuZsYuXBl0k8I/NRjHPwp5blbHj6A5aGi', 'google_id': None}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-17 19:46:41,044 - ERROR - Registration failed for email=shahbaz11@example.com: Database error: failed to create user shahbaz11@example.com: Application error
+2026-03-17 19:46:48,531 - INFO - Fetched user by email: shahbaz11@example.com
+2026-03-17 19:46:49,018 - INFO - User logged in successfully: email=shahbaz11@example.com
+2026-03-17 19:46:49,019 - INFO - User logged in successfully: email=shahbaz11@example.com
+2026-03-17 19:46:56,884 - INFO - Creating device with custom ID: ESP32_005
+2026-03-17 19:46:56,893 - ERROR - Error in DeviceService: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-17 19:47:06,254 - INFO - Fetched 2 devices for user_id=20c70312-afd2-401c-9f6a-13194f1d9c50
+2026-03-17 19:47:06,258 - ERROR - Unhandled exception: 4 validation errors:
+  {'type': 'string_type', 'loc': ('response', 0, 'id'), 'msg': 'Input should be a valid string', 'input': UUID('c301184d-613c-4328-8f13-8dc7d0091421')}
+  {'type': 'string_type', 'loc': ('response', 0, 'user_id'), 'msg': 'Input should be a valid string', 'input': UUID('20c70312-afd2-401c-9f6a-13194f1d9c50')}
+  {'type': 'string_type', 'loc': ('response', 1, 'id'), 'msg': 'Input should be a valid string', 'input': UUID('2c5766b1-54a3-40df-b3e5-0da08c528438')}
+  {'type': 'string_type', 'loc': ('response', 1, 'user_id'), 'msg': 'Input should be a valid string', 'input': UUID('20c70312-afd2-401c-9f6a-13194f1d9c50')}
+
+  File "E:\SmartWell\app\api\device_routes.py", line 34, in get_devices
+    GET /devices/
+2026-03-17 19:47:18,681 - ERROR - Failed to fetch running motor log for device ESP32_005: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "ESP32_005"
+LINE 3: WHERE motor_logs.device_id = 'ESP32_005' AND motor_logs.end_...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'ESP32_005', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-17 19:47:18,682 - ERROR - Failed to start motor for device_id=ESP32_005: Database error: failed to fetch running motor log for device ESP32_005: Application error
+2026-03-19 16:10:46,479 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:10:54,541 - INFO - Database tables created (if not exist)
+2026-03-19 16:13:27,798 - INFO - User created: id=4740db53-a74e-47bb-b68d-4f1f7825979a, email=asjad@example.com
+2026-03-19 16:13:27,799 - INFO - User registered: id=4740db53-a74e-47bb-b68d-4f1f7825979a, email=asjad@example.com
+2026-03-19 16:13:27,799 - INFO - User registered successfully: email=asjad@example.com
+2026-03-19 16:13:55,293 - INFO - Fetched user by email: asjad@example.com
+2026-03-19 16:13:55,599 - INFO - User logged in successfully: email=asjad@example.com
+2026-03-19 16:13:55,599 - INFO - User logged in successfully: email=asjad@example.com
+2026-03-19 16:14:58,551 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:14:58,563 - ERROR - Failed to create device: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'A81polwOIKbhsfvGh72geIFaNOM-kC2qWYP_5mGSiCo'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 16:14:58,564 - ERROR - Error in DeviceService: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'A81polwOIKbhsfvGh72geIFaNOM-kC2qWYP_5mGSiCo'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 38, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-19 16:21:45,676 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:21:46,607 - INFO - Database tables created (if not exist)
+2026-03-19 16:21:55,624 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:21:56,556 - INFO - Database tables created (if not exist)
+2026-03-19 16:22:43,252 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:22:43,269 - ERROR - Failed to create device: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'ipl5VLdfDFKZGnDd5VWDCiMoSd1DEK9a1sqe8_MRUVI'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 16:22:43,270 - ERROR - Error in DeviceService: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'ipl5VLdfDFKZGnDd5VWDCiMoSd1DEK9a1sqe8_MRUVI'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 38, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-19 16:23:37,345 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:23:37,350 - ERROR - Failed to create device: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'SLthq4jMhVGf4Zm07VvjmXCwGjy14P2nXx-Erlvu02U'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 16:23:37,350 - ERROR - Error in DeviceService: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '4740db53-a74e-47bb-b68d-4f1f7825979a', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'SLthq4jMhVGf4Zm07VvjmXCwGjy14P2nXx-Erlvu02U'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 38, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-19 16:23:45,737 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:23:51,647 - INFO - Database tables created (if not exist)
+2026-03-19 16:24:34,940 - INFO - User created: id=7062f45c-e2b6-4b71-81bc-a3ba959b6e08, email=asad@example.com
+2026-03-19 16:24:34,941 - INFO - User registered: id=7062f45c-e2b6-4b71-81bc-a3ba959b6e08, email=asad@example.com
+2026-03-19 16:24:34,941 - INFO - User registered successfully: email=asad@example.com
+2026-03-19 16:37:31,050 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:37:31,063 - ERROR - Failed to create device: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '7062f45c-e2b6-4b71-81bc-a3ba959b6e08', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'VGvryBoqvxkoexJasLDt8Xvsnpq6WtiY4m6HhmE9oWE'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 16:37:31,064 - ERROR - Error in DeviceService: Database error: failed to create device: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.InvalidTextRepresentation: invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\repositories\device_repo.py", line 17, in create_device
+    self.db.commit()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "E:\SmartWell\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.DataError: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1001"
+LINE 1: ...uid, sim_number, location, device_secret) VALUES ('SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO devices (id, user_id, device_name, device_uid, sim_number, location, device_secret) VALUES (%(id)s::UUID, %(user_id)s::UUID, %(device_name)s, %(device_uid)s, %(sim_number)s, %(location)s, %(device_secret)s) RETURNING devices.created_at]
+[parameters: {'id': 'SMSWELL1001', 'user_id': '7062f45c-e2b6-4b71-81bc-a3ba959b6e08', 'device_name': 'Main Well Pump', 'device_uid': 'SMSWELL1001', 'sim_number': '03001234567', 'location': 'Sector 7-G', 'device_secret': 'VGvryBoqvxkoexJasLDt8Xvsnpq6WtiY4m6HhmE9oWE'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 38, in create_device
+    created_device = self.repo.create_device(new_device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\SmartWell\app\repositories\device_repo.py", line 26, in create_device
+    raise AppException(f"Database error: failed to create device")
+app.core.exceptions.AppException: Database error: failed to create device: Application error
+2026-03-19 16:44:37,940 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:46:42,830 - INFO - Database tables created (if not exist)
+2026-03-19 16:47:34,887 - ERROR - Failed to create user asjad@example.com: (psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(asjad@example.com) already exists.
+
+[SQL: INSERT INTO users (id, name, email, password_hash, google_id) VALUES (%(id)s::UUID, %(name)s, %(email)s, %(password_hash)s, %(google_id)s) RETURNING users.created_at]
+[parameters: {'id': UUID('c87aae8a-dd1d-4926-b822-af6dbfadebd4'), 'name': 'asjad', 'email': 'asjad@example.com', 'password_hash': '$2b$12$YS8r7YFpFJJRRACPqEn3p.5QdpvdYcRYz5O7XLC3IHSgclBBzpMCC', 'google_id': None}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2026-03-19 16:47:34,887 - ERROR - Registration failed for email=asjad@example.com: Database error: failed to create user asjad@example.com: Application error
+2026-03-19 16:47:56,184 - INFO - User created: id=6b3f9511-0126-46e9-8b11-3133141209cc, email=asjad11@example.com
+2026-03-19 16:47:56,184 - INFO - User registered: id=6b3f9511-0126-46e9-8b11-3133141209cc, email=asjad11@example.com
+2026-03-19 16:47:56,184 - INFO - User registered successfully: email=asjad11@example.com
+2026-03-19 16:51:19,777 - INFO - Fetched user by email: asjad11@example.com
+2026-03-19 16:51:20,082 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 16:51:20,082 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 16:53:56,071 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:53:56,086 - INFO - Device created: id=SMSWELL1001, name=Main Well Pump
+2026-03-19 16:53:56,091 - ERROR - Unhandled exception: 1 validation error:
+  {'type': 'string_type', 'loc': ('response', 'user_id'), 'msg': 'Input should be a valid string', 'input': UUID('6b3f9511-0126-46e9-8b11-3133141209cc')}
+
+  File "E:\SmartWell\app\api\device_routes.py", line 13, in create_device
+    POST /devices/
+2026-03-19 16:57:08,583 - INFO - Shutdown cleanup (if any)
+2026-03-19 16:59:40,992 - INFO - Database tables created (if not exist)
+2026-03-19 16:59:54,231 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:59:54,243 - ERROR - Error in DeviceService: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-19 16:59:55,377 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:59:55,380 - ERROR - Error in DeviceService: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-19 16:59:56,441 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 16:59:56,444 - ERROR - Error in DeviceService: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-19 17:00:30,498 - INFO - Fetched user by email: asjad11@example.com
+2026-03-19 17:00:30,833 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 17:00:30,833 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 17:01:14,795 - INFO - Creating device with custom ID: SMSWELL1001
+2026-03-19 17:01:14,798 - ERROR - Error in DeviceService: Device with this UID already exists: Application error
+Traceback (most recent call last):
+  File "E:\SmartWell\app\services\device_service.py", line 23, in create_device
+    raise AppException("Device with this UID already exists")
+app.core.exceptions.AppException: Device with this UID already exists: Application error
+2026-03-19 17:05:56,441 - INFO - Creating device with custom ID: SMSWELL1002
+2026-03-19 17:05:56,454 - INFO - Device created: id=SMSWELL1002, name=Test Pump 2
+2026-03-19 19:24:03,292 - INFO - Fetched 0 devices for user_id=3fa85f64-5717-4562-b3fc-2c963f66afa6
+2026-03-19 19:24:46,311 - ERROR - Failed to fetch running motor log for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 3: WHERE motor_logs.device_id = 'SMSWELL1002' AND motor_logs.en...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'SMSWELL1002', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 19:24:46,312 - ERROR - Failed to start motor for device_id=SMSWELL1002: Database error: failed to fetch running motor log for device SMSWELL1002: Application error
+2026-03-19 19:25:10,410 - INFO - Shutdown cleanup (if any)
+2026-03-19 19:25:23,385 - INFO - Database tables created (if not exist)
+2026-03-19 19:26:00,231 - INFO - Fetched user by email: asjad11@example.com
+2026-03-19 19:26:00,764 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 19:26:00,765 - INFO - User logged in successfully: email=asjad11@example.com
+2026-03-19 19:26:19,915 - INFO - Fetched 1 devices for user_id=6b3f9511-0126-46e9-8b11-3133141209cc
+2026-03-19 19:27:22,018 - ERROR - Failed to fetch running motor log for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 3: WHERE motor_logs.device_id = 'SMSWELL1002' AND motor_logs.en...
+                                     ^
+
+[SQL: SELECT motor_logs.id AS motor_logs_id, motor_logs.device_id AS motor_logs_device_id, motor_logs.start_time AS motor_logs_start_time, motor_logs.end_time AS motor_logs_end_time, motor_logs.duration_minutes AS motor_logs_duration_minutes, motor_logs.trigger_type AS motor_logs_trigger_type, motor_logs.created_at AS motor_logs_created_at 
+FROM motor_logs 
+WHERE motor_logs.device_id = %(device_id_1)s AND motor_logs.end_time IS NULL 
+ LIMIT %(param_1)s]
+[parameters: {'device_id_1': 'SMSWELL1002', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 19:27:22,019 - ERROR - Failed to start motor for device_id=SMSWELL1002: Database error: failed to fetch running motor log for device SMSWELL1002: Application error
+2026-03-19 19:32:44,701 - INFO - Shutdown cleanup (if any)
+2026-03-19 19:32:46,722 - INFO - Database tables created (if not exist)
+2026-03-19 19:32:51,098 - INFO - No running motor log found for device_id=SMSWELL1002
+2026-03-19 19:32:51,181 - INFO - Motor log created: id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, device_id=SMSWELL1002, trigger_type=manual
+2026-03-19 19:32:51,182 - INFO - Motor started: device_id=SMSWELL1002, log_id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, trigger=manual
+2026-03-19 19:32:51,183 - INFO - Motor started: device_id=SMSWELL1002, log_id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6
+2026-03-19 19:35:00,508 - INFO - Found running motor log: id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, device_id=SMSWELL1002
+2026-03-19 19:35:00,514 - INFO - Motor log updated: id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, device_id=SMSWELL1002
+2026-03-19 19:35:00,516 - INFO - Motor stopped: device_id=SMSWELL1002, log_id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, duration=2 minutes
+2026-03-19 19:35:00,517 - INFO - Motor stopped: device_id=SMSWELL1002, log_id=1ab5dea6-c036-4d7a-9812-8ac341ad7bc6, duration=2 minutes
+2026-03-19 19:36:12,093 - ERROR - Failed to create schedule for device SMSWELL1002: Class 'app.schemas.schedule_schema.ScheduleCreate' is not mapped
+2026-03-19 19:36:12,094 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 19:43:44,749 - INFO - Shutdown cleanup (if any)
+2026-03-19 19:43:46,057 - INFO - Database tables created (if not exist)
+2026-03-19 19:43:54,646 - ERROR - Failed to create schedule for device SMSWELL1002: Class 'app.schemas.schedule_schema.ScheduleCreate' is not mapped
+2026-03-19 19:43:54,647 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 19:52:08,749 - INFO - Shutdown cleanup (if any)
+2026-03-19 19:52:09,966 - INFO - Database tables created (if not exist)
+2026-03-19 19:52:49,809 - ERROR - Failed to create schedule for device SMSWELL1002: Class 'app.schemas.schedule_schema.ScheduleCreate' is not mapped
+2026-03-19 19:52:49,810 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 19:57:01,914 - INFO - Shutdown cleanup (if any)
+2026-03-19 19:57:03,745 - INFO - Database tables created (if not exist)
+2026-03-19 19:57:08,539 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 19:57:08,562 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('18a8b556-c4de-4f22-b72a-df05b25ed47c'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': '18a8b556-c4de-4f22-b72a-df05b25ed47c', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 19:57:08,564 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 19:57:10,179 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 19:57:10,182 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('ad4559c6-8e93-4129-bb15-939e54ae61ba'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': 'ad4559c6-8e93-4129-bb15-939e54ae61ba', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 19:57:10,183 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 20:01:13,269 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 20:01:13,272 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('1bbc5fe1-abb5-4238-8d7f-d2287804c2d3'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': '1bbc5fe1-abb5-4238-8d7f-d2287804c2d3', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 20:01:13,273 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 20:01:14,501 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 20:01:14,506 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('88775bf9-22c8-4a7d-8321-15a5746ab16e'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': '88775bf9-22c8-4a7d-8321-15a5746ab16e', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 20:01:14,506 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 20:01:21,409 - INFO - Shutdown cleanup (if any)
+2026-03-19 20:01:22,754 - INFO - Database tables created (if not exist)
+2026-03-19 20:01:26,993 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 20:01:27,017 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('e2393657-3b0d-40d9-97d0-a829ddbfdb8a'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': 'e2393657-3b0d-40d9-97d0-a829ddbfdb8a', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 20:01:27,018 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 20:01:28,072 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 20:01:28,077 - ERROR - Failed to create schedule for device SMSWELL1002: (psycopg2.errors.InvalidTextRepresentation) invalid input syntax for type uuid: "SMSWELL1002"
+LINE 1: ...ES ('efcaa1b0-87f8-4601-bbd6-f020ab14427a'::UUID, 'SMSWELL10...
+                                                             ^
+
+[SQL: INSERT INTO schedules (id, device_id, schedule_type, pattern, is_active, schedule_name) VALUES (%(id)s::UUID, %(device_id)s::UUID, %(schedule_type)s, %(pattern)s::JSONB, %(is_active)s, %(schedule_name)s) RETURNING schedules.created_at, schedules.updated_at]
+[parameters: {'id': 'efcaa1b0-87f8-4601-bbd6-f020ab14427a', 'device_id': 'SMSWELL1002', 'schedule_type': 'daily', 'pattern': '{"start_time": "08:00", "end_time": "10:00", "days": ["Monday", "Wednesday", "Friday"]}', 'is_active': True, 'schedule_name': 'Morning Irrigation'}]
+(Background on this error at: https://sqlalche.me/e/20/9h9h)
+2026-03-19 20:01:28,078 - ERROR - Failed to create schedule for device_id=SMSWELL1002: Database error: failed to create schedule for device SMSWELL1002: Application error
+2026-03-19 20:02:14,763 - INFO - Shutdown cleanup (if any)
+2026-03-19 20:02:17,788 - INFO - Database tables created (if not exist)
+2026-03-19 20:02:24,726 - INFO - SERVICE: Creating new schedule for device SMSWELL1002
+2026-03-19 20:02:24,822 - INFO - Schedule created: id=d992297e-9bb9-49dc-8b26-66e3e844ff34, device_id=SMSWELL1002, active=True
+2026-03-19 20:02:24,823 - INFO - Schedule created: device_id=SMSWELL1002, schedule_id=d992297e-9bb9-49dc-8b26-66e3e844ff34

@@ -19,4 +19,5 @@ dependencies = [
     "sqlalchemy>=2.0.48",
     "uvicorn[standard]>=0.41.0",
     "bcrypt==4.0.1",
+    "requests>=2.33.1",
 ]

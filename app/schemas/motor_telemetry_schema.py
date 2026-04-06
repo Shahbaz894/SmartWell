@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from uuid import UUID
+
 from datetime import datetime
 
 
@@ -21,12 +21,12 @@ class MotorTelemetryBase(BaseModel):
 
 
 class MotorTelemetryCreate(MotorTelemetryBase):
-    device_id: UUID
+    device_id: str
 
 
 class MotorTelemetryResponse(MotorTelemetryBase):
-    id: UUID
-    device_id: UUID
+    id: str
+    device_id: str
     created_at: datetime
 
     class Config:

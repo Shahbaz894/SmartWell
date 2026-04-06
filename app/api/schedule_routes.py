@@ -15,7 +15,7 @@ router = APIRouter(prefix="/schedule", tags=["Schedule"])
 def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db)):
     service = ScheduleService(db)
     try:
-        schedule = service.repo.create_schedule(data)
+        schedule = service.create_schedule(data.device_id, data)
         logger.info(
             "Schedule created: device_id=%s, schedule_id=%s",
             data.device_id,

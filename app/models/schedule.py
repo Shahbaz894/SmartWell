@@ -1,58 +1,36 @@
 # app/models/schedule.py
 
 import uuid
-from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from app.db.base import Base
-
 
 class Schedule(Base):
     __tablename__ = "schedules"
 
-    # Primary Key
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Changed to String to avoid UUID casting issues in some environments
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    # Device relation
+    # CRITICAL FIX: Changed from UUID to String(100) to match devices.id
     device_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("devices.id", ondelete="CASCADE"),
+        String(100), 
+        ForeignKey("devices.id", ondelete="CASCADE"), 
         nullable=False
     )
 
-    # Schedule type
-    # monthly_pattern OR daily_slot
     schedule_type = Column(String(20), nullable=False)
-
-    # JSON schedule pattern
-    # Example stored structure:
-    # {
-    #   "month_pattern":[
-    #       {"days":7,"state":"ON"},
-    #       {"days":3,"state":"OFF"},
-    #       {"days":5,"state":"ON"}
-    #   ],
-    #   "daily_slots":[
-    #       {"start":"08:00","end":"12:00"},
-    #       {"start":"14:00","end":"16:00"}
-    #   ]
-    # }
     pattern = Column(JSONB, nullable=False)
-
-    # Enable / disable schedule
     is_active = Column(Boolean, default=True)
-
-    # Schedule name (optional)
     schedule_name = Column(String(100))
 
-    # Metadata
     created_at = Column(
-        TIMESTAMP(timezone=True),
+        TIMESTAMP(timezone=True), 
         server_default=func.now()
     )
 
     updated_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
+        TIMESTAMP(timezone=True), 
+        server_default=func.now(), 
         onupdate=func.now()
     )

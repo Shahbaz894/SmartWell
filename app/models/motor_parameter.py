@@ -1,17 +1,15 @@
 from sqlalchemy import Column, String, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 import uuid
 
 class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    # ✅ Use String to match Device.id
+    device_id = Column(String, ForeignKey("devices.id"), nullable=False)
 
-    # 🔥 Link with DB Device (UUID)
-    device_id = Column(UUID(as_uuid=True), ForeignKey("devices.id"), nullable=False)
-
-    # Optional: store ESP32 ID also
+    # Optional: store ESP32 ID separately
     device_uid = Column(String, nullable=False)
 
     output_frequency = Column(Float)
