@@ -3,7 +3,7 @@ name = "smartwell"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.11.9"
 dependencies = [
     "alembic>=1.18.4",
     "apscheduler>=3.11.2",
