@@ -1,8 +1,3 @@
 {
-  "build": {
-    "buildCommand": "uv sync"
-  },
-  "deploy": {
-    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port 8080"
-  }
+  "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port 8080"
 }
