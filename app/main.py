@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(title="IoT TubeWell API", lifespan=lifespan)
 
-
+#all api routers
 # Routers
 app.include_router(auth_routes.router)
 app.include_router(device_routes.router)
