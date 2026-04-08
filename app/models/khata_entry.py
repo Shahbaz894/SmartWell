@@ -9,6 +9,7 @@ class KhataEntry(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # FK to customer (assuming customer.id is still UUID)
+    # MUST match the type in customer.py exactly
     customer_id = Column(String, ForeignKey("customers.id", ondelete="CASCADE"))
 
     # FK to device (ESP32 string ID)

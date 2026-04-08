@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Float, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, BigInteger, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
 
@@ -6,18 +7,32 @@ class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    # ✅ Use String to match Device.id
+
     device_id = Column(String, ForeignKey("devices.id"), nullable=False)
 
-    # Optional: store ESP32 ID separately
-    device_uid = Column(String, nullable=False)
+    # Unix timestamp from ESP32
+    timestamp = Column(BigInteger, nullable=False)
 
-    output_frequency = Column(Float)
-    reference_frequency = Column(Float)
-    dc_bus_voltage = Column(Float)
-    output_voltage = Column(Float)
-    output_current = Column(Float)
-    motor_speed = Column(Float)
+    # Electrical data
+    freq = Column(Float)
+    current = Column(Float)
+    voltage = Column(Float)
+    dcbus = Column(Float)
     power = Column(Float)
-    load_torque = Column(Float)
-    real_power = Column(Float)
+    energy_in = Column(Float)
+
+    # Status
+    fault = Column(Integer)
+    status_code = Column(Integer)
+
+    # Performance
+    reference_freq = Column(Float)
+    motor_speed = Column(Float)
+    power_percent = Column(Float)
+    torque_percent = Column(Float)
+
+    # 1 = live, 0 = offline/backfill
+    is_live = Column(Integer)
+
+    # 🔗 Relationship
+    device = relationship("Device", back_populates="telemetry")
