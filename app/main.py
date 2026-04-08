@@ -70,6 +70,7 @@ async def lifespan(app: FastAPI):
                 logger.error("❌ DB NAME ERROR: The database name is wrong.")
             
             logger.warning(f"⚠️ Connection failed ({retries} left). Retrying in 3s...")
+            logger.warning(f"⚠️ Connection failed ({retries} left). Error: {str(e)}. Retrying in 3s...")
             await asyncio.sleep(3)
         except Exception as e:
             logger.error(f"🔥 Unexpected error during DB init: {str(e)}")
@@ -77,6 +78,7 @@ async def lifespan(app: FastAPI):
     
     if not connected:
         logger.critical("❌ FATAL: Could not connect to database after retries.")
+        logger.warning(f"⚠️ Connection failed ({retries} left). Error: {str(e)}. Retrying in 3s...")
         # Safely log the last error encountered
         if last_error:
             logger.error(f"❌ LAST DB ERROR: {repr(last_error)}")
