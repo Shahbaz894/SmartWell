@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI):
     
     if not connected:
         logger.critical("❌ FATAL: Could not connect to database after retries.")
+        logger.error(f"❌ DATABASE CONNECTION ERROR: {repr(e)}")
         raise AppException("Database initialization failed permanently.")
 
     yield  # --- Application is now running ---
