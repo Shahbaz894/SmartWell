@@ -7,14 +7,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
-# IMPORTANT: Import base_class first to ensure all models are registered 
+# 1. Import your settings object
+from app.core.config import settings
 import app.db.base_class  
 from app.db.base import Base
 from app.db.session import engine
 from app.core.logger import logger
 from app.core.exceptions import AppException
 
-# Import all your API routers
+# Import routers
 from app.api import (
     auth_routes,
     device_routes,
@@ -32,24 +33,26 @@ async def lifespan(app: FastAPI):
     retries = 10
     connected = False
     
-    db_url = os.getenv("DATABASE_URL", "NOT_SET")
+    # 2. USE SETTINGS INSTEAD OF OS.GETENV
+    db_url = settings.DATABASE_URL
+    
     # Improved masking for logs
-    masked_url = f"{db_url.split('@')[-1]}" if "@" in db_url else db_url
+    masked_url = f"{db_url.split('@')[-1]}" if db_url and "@" in db_url else "NOT_SET"
     logger.info(f"🔍 Checking DB Host: {masked_url}")
     
-    if db_url == "NOT_SET":
-        logger.critical("❌ FATAL: DATABASE_URL environment variable not set!")
+    # 3. Check the variable from settings
+    if not db_url:
+        logger.critical("❌ FATAL: DATABASE_URL not found in settings!")
         raise AppException("DATABASE_URL is not configured")
     
     logger.info("🚀 Starting up IoT TubeWell API...")
     
+    last_error = None
     while retries > 0 and not connected:
         try:
-            # 1. Check if the DB is actually reachable/responsive (Synchronous call wrapped in run_in_executor)
             def check_db():
                 with engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
-                    # 2. Synchronous Table Creation (Only if using sync SQLAlchemy)
                     Base.metadata.create_all(bind=engine)
             
             await asyncio.get_event_loop().run_in_executor(None, check_db)
@@ -57,24 +60,26 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Database connection established and tables verified.")
             connected = True
         except (OperationalError, SQLAlchemyError) as e:
+            last_error = e
             retries -= 1
             error_msg = str(e)
             
-            # Specific hint for common issues
             if "password authentication failed" in error_msg:
                 logger.error("❌ DB AUTH ERROR: Check your username/password.")
             elif "does not exist" in error_msg:
-                logger.error("❌ DB NAME ERROR: The database name in your URL is wrong.")
+                logger.error("❌ DB NAME ERROR: The database name is wrong.")
             
             logger.warning(f"⚠️ Connection failed ({retries} left). Retrying in 3s...")
             await asyncio.sleep(3)
         except Exception as e:
             logger.error(f"🔥 Unexpected error during DB init: {str(e)}")
-            break # Stop retrying on non-DB errors
+            break 
     
     if not connected:
         logger.critical("❌ FATAL: Could not connect to database after retries.")
-        logger.error(f"❌ DATABASE CONNECTION ERROR: {repr(e)}")
+        # Safely log the last error encountered
+        if last_error:
+            logger.error(f"❌ LAST DB ERROR: {repr(last_error)}")
         raise AppException("Database initialization failed permanently.")
 
     yield  # --- Application is now running ---
@@ -99,15 +104,15 @@ app.include_router(khata_routes.router, prefix="/khata", tags=["Accounting"])
 
 # --- Global Exception Handler ---
 @app.exception_handler(Exception)
-@app.exception_handler(AppException) # Explicitly catch your custom exception too
 async def global_exception_handler(request: Request, exc: Exception):
+    # Log the full error for debugging
     logger.error(f"🔥 Unhandled Exception: {str(exc)}")
     
     status_code = 500
     message = "Internal Server Error"
     
     if isinstance(exc, AppException):
-        status_code = 400 # Or your preferred status
+        status_code = 400 
         message = str(exc)
 
     return JSONResponse(
