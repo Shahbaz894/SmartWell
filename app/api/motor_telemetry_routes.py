@@ -42,7 +42,7 @@ def create_telemetry(data: MotorTelemetryCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{device_id}")
-def get_device_telemetry(device_id: UUID, db: Session = Depends(get_db)):
+def get_device_telemetry(device_id: str, db: Session = Depends(get_db)):
     try:
         telemetry_list = service.get_device_telemetry(db, device_id)
         logger.info(
