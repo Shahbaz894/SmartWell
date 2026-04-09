@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Integer, Float, BigInteger, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, BigInteger, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
+from datetime import datetime
 
 class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"
@@ -12,6 +13,7 @@ class MotorTelemetry(Base):
 
     # Unix timestamp from ESP32
     timestamp = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)  # ADD THIS
 
     # Electrical data
     freq = Column(Float)
