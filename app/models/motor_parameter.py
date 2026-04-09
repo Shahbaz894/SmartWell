@@ -11,11 +11,9 @@ class MotorTelemetry(Base):
 
     device_id = Column(String, ForeignKey("devices.id"), nullable=False)
 
-    # Unix timestamp from ESP32
+    # From ESP32
     timestamp = Column(BigInteger, nullable=False)
-   
 
-    # Electrical data
     freq = Column(Float)
     current = Column(Float)
     voltage = Column(Float)
@@ -25,6 +23,7 @@ class MotorTelemetry(Base):
 
     # Status
     fault = Column(Integer)
+    fault_code = Column(Integer)      # ✅ ADDED
     status_code = Column(Integer)
 
     # Performance
@@ -33,8 +32,8 @@ class MotorTelemetry(Base):
     power_percent = Column(Float)
     torque_percent = Column(Float)
 
-    # 1 = live, 0 = offline/backfill
+    # Live / offline
     is_live = Column(Integer)
 
-    # 🔗 Relationship
+    # Relationship
     device = relationship("Device", back_populates="telemetry")
