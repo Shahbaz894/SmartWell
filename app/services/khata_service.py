@@ -1,125 +1,76 @@
 # app/services/khata_service.py
 
 from sqlalchemy.exc import SQLAlchemyError
+from app.models.device import Device
 from app.repositories.khata_repo import KhataRepository
 from app.models.khata_entry import KhataEntry
 from app.core.logger import logger
 from app.core.exceptions import AppException, NotFoundException
 
 
-# class KhataService:
 
-#     def __init__(self, db):
-#         self.repo = KhataRepository(db)
-
-#     def create_entry(self, data):
-#         try:
-#             entry = KhataEntry(**data)
-#             created_entry = self.repo.create_entry(entry)
-#             logger.info(
-#                 "Khata entry created: id=%s, customer=%s, amount=%s",
-#                 created_entry.id,
-#                 created_entry.customer_name,
-#                 created_entry.total_bill
-#             )
-#             return created_entry
-#         except SQLAlchemyError as e:
-#             logger.error(
-#                 "Failed to create khata entry for customer %s: %s",
-#                 data.get("customer_name", "unknown"),
-#                 str(e)
-#             )
-#             raise AppException(f"Database error: failed to create khata entry for customer {data.get('customer_name', 'unknown')}")
-
-#     def delete_entry(self, entry_id):
-#         try:
-#             entry = self.repo.get_entry(entry_id)
-#             if not entry:
-#                 logger.warning("Khata entry not found: id=%s", entry_id)
-#                 raise NotFoundException(f"Khata entry {entry_id} not found")
-
-#             self.repo.delete_entry(entry)
-#             logger.info(
-#                 "Khata entry deleted: id=%s, customer=%s",
-#                 entry.id,
-#                 entry.customer_name
-#             )
-#             return True
-#         except SQLAlchemyError as e:
-#             logger.error("Failed to delete khata entry id=%s: %s", entry_id, str(e))
-#             raise AppException(f"Database error: failed to delete khata entry {entry_id}")
 
 class KhataService:
 
     def __init__(self, db):
         self.repo = KhataRepository(db)
 
+   
     def create_entry(self, data: dict):
         try:
-            # ✅ Validate required fields
-            if not data.get("customer_name"):
-                raise AppException("Customer name is required")
+            # ✅ Validate device
+            device = self.db.query(Device).filter_by(id=data["device_id"]).first()
+            if not device:
+                raise AppException("Invalid device_id")
 
-            if not data.get("price_per_hour"):
-                raise AppException("Price per hour is required")
+            # ✅ Handle customer (AUTO or MANUAL)
+            if device.customer_id:
+                # Auto from DB
+                data["customer_id"] = device.customer_id
+                data["customer_name"] = device.customer.name
+            else:
+                # Manual entry
+                if not data.get("customer_name"):
+                    raise AppException("Customer name is required")
 
-            # ✅ Auto-calculate run_hours from motor_log if not provided
+            # ✅ run_hours logic
+            if not data.get("run_hours") and not data.get("motor_log_id"):
+                raise AppException("run_hours or motor_log_id is required")
+
             if not data.get("run_hours") and data.get("motor_log_id"):
                 log = self.repo.get_motor_log(data["motor_log_id"])
 
                 if not log or not log.duration_seconds:
-                    raise AppException("Invalid motor log or motor not stopped")
+                    raise AppException("Invalid motor log")
 
-                data["run_hours"] = round(log.duration_minutes / 3600, 2)
+                data["run_hours"] = round(log.duration_seconds / 3600, 2)
 
-            # ✅ Calculate total bill
-            if not data.get("total_bill"):
-                data["total_bill"] = round(
-                    data["run_hours"] * data["price_per_hour"], 2
-                )
+            # ✅ billing
+            hours = float(data["run_hours"])
+            price = float(data["price_per_hour"])
 
-            # ✅ Default values
-            cash_received = data.get("cash_received") or 0
+            if data.get("total_bill") is None:
+                data["total_bill"] = round(hours * price, 2)
 
-            # ❗ Prevent negative payment
-            if cash_received < 0:
-                raise AppException("Cash received cannot be negative")
+            cash = float(data.get("cash_received") or 0)
 
-            # ❗ Prevent overpayment (optional rule)
-            if cash_received > data["total_bill"]:
-                raise AppException("Cash received cannot exceed total bill")
+            if cash < 0:
+                raise AppException("Cash cannot be negative")
 
-            # ✅ Calculate balance
-            data["cash_received"] = cash_received
-            data["balance"] = round(data["total_bill"] - cash_received, 2)
+            if cash > data["total_bill"]:
+                raise AppException("Cash cannot exceed total bill")
 
-            # ✅ Auto clear logic
+            data["cash_received"] = cash
+            data["balance"] = round(data["total_bill"] - cash, 2)
             data["is_cleared"] = data["balance"] <= 0
 
-            # ✅ Create entry
+            # ✅ Save
             entry = KhataEntry(**data)
-            created_entry = self.repo.create_entry(entry)
-
-            logger.info(
-                "Khata created: customer=%s, total=%s, paid=%s, balance=%s",
-                created_entry.customer_name,
-                created_entry.total_bill,
-                created_entry.cash_received,
-                created_entry.balance
-            )
-
-            return created_entry
-
-        except SQLAlchemyError as e:
-            logger.error("Database error while creating khata: %s", str(e))
-            raise AppException("Database error: failed to create khata entry")
-
-        except AppException:
-            raise
+            return self.repo.create_entry(entry)
 
         except Exception as e:
-            logger.error("Unexpected error: %s", str(e))
-            raise AppException("Unexpected error occurred")
+            logger.error("Create khata failed: %s", str(e))
+            raise AppException(str(e))
 
     def update_entry(self, entry_id: str, data: dict):
         entry = self.repo.get_entry(entry_id)
