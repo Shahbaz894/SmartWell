@@ -12,60 +12,6 @@ from app.core.exceptions import AppException, NotFoundException
 
 class MotorTelemetryRepository:
 
-    # def create(self, db: Session, data: MotorTelemetryCreate):
-    #     try:
-    #         telemetry = MotorTelemetry(**data.model_dump())
-    #         db.add(telemetry)
-    #         db.commit()
-    #         db.refresh(telemetry)
-    #         logger.info(
-    #             "Motor telemetry created: id=%s, device_id=%s",
-    #             telemetry.id,
-    #             telemetry.device_id
-    #         )
-    #         return telemetry
-    #     except SQLAlchemyError as e:
-    #         db.rollback()
-    #         logger.error(
-    #             "Failed to create motor telemetry for device %s: %s",
-    #             data.device_id,
-    #             str(e)
-    #         )
-    #         raise AppException(f"Database error: failed to create motor telemetry for device {data.device_id}")
-    
-    # def create(self, db: Session, data: MotorTelemetryCreate):
-    #  try:
-    #     telemetry = MotorTelemetry(
-    #         device_id=data.device_id,
-    #         freq=data.output_frequency,
-    #         reference_freq=data.reference_frequency,
-    #         dcbus=data.dc_bus_voltage,
-    #         voltage=data.output_voltage,
-    #         current=data.output_current,
-    #         motor_speed=data.motor_speed,
-    #         power=data.real_power,
-    #         power_percent=data.power_load,
-    #         torque_percent=data.torque_load,
-    #         timestamp=int(datetime.now().timestamp() * 1000),
-    #         is_live=1
-    #     )
-    #     db.add(telemetry)
-    #     db.commit()
-    #     db.refresh(telemetry)
-    #     logger.info(
-    #         "Motor telemetry created: id=%s, device_id=%s",
-    #         telemetry.id,
-    #         telemetry.device_id
-    #     )
-    #     return telemetry
-    #  except SQLAlchemyError as e:
-    #         db.rollback()
-    #         logger.error(
-    #             "Failed to create motor telemetry for device %s: %s",
-    #             data.device_id,
-    #             str(e)
-    #         )
-    #         raise AppException(f"Database error: failed to create motor telemetry for device {data.device_id}")
     def create(self, db: Session, data: MotorTelemetryCreate):
         try:
             telemetry = MotorTelemetry(
@@ -100,7 +46,7 @@ class MotorTelemetryRepository:
             )
             raise AppException(f"Database error: {str(e)}")
 
-    def get_by_device(self, db: Session, device_id: UUID):
+    def get_by_device(self, db: Session, device_id: str):
         try:
             telemetry_list = (
                 db.query(MotorTelemetry)
