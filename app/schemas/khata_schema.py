@@ -64,7 +64,7 @@ class KhataCreate(BaseModel):
     cash_received: Optional[float] = 0  # optional, defaults to 0
 
     # Auto-calculated fields (make optional!)
-    entry_date: Optional[DateType] = None
+    date: Optional[DateType] = None
     run_hours: Optional[float] = None
     total_bill: Optional[float] = None
     is_cleared: Optional[bool] = False
