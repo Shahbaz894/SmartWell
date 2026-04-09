@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from uuid import UUID
 
+from app import db
 from app.models.motor_parameter import MotorTelemetry
 from app.schemas.motor_telemetry_schema import MotorTelemetryCreate
 from app.core.logger import logger
@@ -52,7 +53,7 @@ class MotorTelemetryRepository:
             telemetry_list = (
                 db.query(MotorTelemetry)
                 .filter(MotorTelemetry.device_id == device_id)
-                .order_by(MotorTelemetry.created_at.desc())
+                .order_by(MotorTelemetry.id.desc())  # Change this
                 .all()
             )
             logger.info(
