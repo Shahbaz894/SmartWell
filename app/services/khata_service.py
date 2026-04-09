@@ -17,21 +17,21 @@ class KhataService:
         self.db = db
         self.repo = KhataRepository(db)
 
-    def create_entry(self, device_id: str, data: dict):
+    def create_entry(self, user_id: str, data: dict):
         try:
-            # 🔹 Find device and its user
-            device = self.db.query(Device).filter_by(id=device_id).first()
+            # ✅ Validate device belongs to user
+            device = self.db.query(Device).filter_by(id=data["device_id"], user_id=user_id).first()
             if not device:
-                raise AppException("Invalid device_id")
+                raise AppException("Invalid device_id or device doesn't belong to you")
 
-            # 🔹 Set customer_id to device's user_id
-            data["customer_id"] = device.user_id
-
-            # 🔹 Customer name from UI (manual input)
+            # ✅ Customer info - mandatory from UI
             if not data.get("customer_name"):
                 raise AppException("customer_name is required")
 
-            # 🔹 Calculate run_hours from motor log if not provided
+            # ✅ Set customer_id from logged-in user
+            data["customer_id"] = str(user_id)   # ← Add it here
+
+            # ✅ run_hours logic
             if not data.get("run_hours") and data.get("motor_log_id"):
                 log = self.db.query(MotorLog).filter_by(id=data["motor_log_id"]).first()
                 if not log:
@@ -41,15 +41,13 @@ class KhataService:
                     data["run_hours"] = round(duration / 3600, 2)
                 else:
                     raise AppException("Motor log not completed")
-            elif not data.get("run_hours"):
-                raise AppException("run_hours or motor_log_id is required")
 
-            # 🔹 Calculate total_bill
+            # ✅ Billing calculations
             hours = float(data["run_hours"])
             price = float(data["price_per_hour"])
-            data["total_bill"] = round(hours * price, 2)
+            if data.get("total_bill") is None:
+                data["total_bill"] = round(hours * price, 2)
 
-            # 🔹 Cash received & balance
             cash = float(data.get("cash_received") or 0)
             if cash < 0:
                 raise AppException("Cash cannot be negative")
@@ -60,11 +58,10 @@ class KhataService:
             data["balance"] = round(data["total_bill"] - cash, 2)
             data["is_cleared"] = data["balance"] <= 0
 
-            # 🔹 Save KhataEntry
+            # ✅ Save KhataEntry
             entry = KhataEntry(
                 id=str(uuid4()),
                 created_at=datetime.now(),
-                device_id=device.id,
                 **data
             )
 
