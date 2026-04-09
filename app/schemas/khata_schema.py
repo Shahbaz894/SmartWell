@@ -42,16 +42,30 @@ from typing import Optional
 #     class Config:
 #         from_attributes = True
 
+# class KhataCreate(BaseModel):
+#     customer_name: str
+#     customer_id: Optional[str] = None
+#     device_id: str
+#     motor_log_id: Optional[str] = None
+#     date: date
+#     run_hours: float
+#     price_per_hour: float
+#     total_bill: float
+#     cash_received: Optional[float] = 0
+#     is_cleared: Optional[bool] = False
+
 class KhataCreate(BaseModel):
-    customer_name: str
-    customer_id: Optional[str] = None
-    device_id: str
-    motor_log_id: Optional[str] = None
-    date: date
-    run_hours: float
-    price_per_hour: float
-    total_bill: float
-    cash_received: Optional[float] = 0
+    customer_name: str                 # required from UI
+    customer_id: Optional[str] = None  # auto-generated if not provided
+    device_id: str                     # required
+    motor_log_id: Optional[str] = None # optional for auto run_hours
+    price_per_hour: float               # required
+    cash_received: Optional[float] = 0 # optional, defaults to 0
+
+    # auto-calculated fields
+    date: date 
+    run_hours: Optional[float] = None
+    total_bill: Optional[float] = None
     is_cleared: Optional[bool] = False
 
 class KhataUpdate(BaseModel):
