@@ -3,6 +3,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
+from datetime import date as DateType
 
 
 # class KhataCreate(BaseModel):
@@ -55,15 +56,15 @@ from typing import Optional
 #     is_cleared: Optional[bool] = False
 
 class KhataCreate(BaseModel):
-    customer_name: str                 # required from UI
-    customer_id: Optional[str] = None  # auto-generated if not provided
-    device_id: str                     # required
-    motor_log_id: Optional[str] = None # optional for auto run_hours
-    price_per_hour: float               # required
-    cash_received: Optional[float] = 0 # optional, defaults to 0
+    customer_name: str                  # required from UI
+    customer_id: Optional[str] = None   # optional, generated if missing
+    device_id: str                      # required
+    motor_log_id: Optional[str] = None  # optional, only if using motor log
+    price_per_hour: float                # required
+    cash_received: Optional[float] = 0  # optional, defaults to 0
 
-    # auto-calculated fields
-    date: date 
+    # Auto-calculated fields (make optional!)
+    entry_date: Optional[DateType] = None
     run_hours: Optional[float] = None
     total_bill: Optional[float] = None
     is_cleared: Optional[bool] = False
