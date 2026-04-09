@@ -34,7 +34,23 @@ class KhataRepository:
             raise AppException(
                 f"Database error: failed to create khata entry for customer {entry.customer_name}"
             )
-
+    def update_entry(self, entry: KhataEntry, data: dict):
+        try:
+            for key, value in data.items():
+                if hasattr(entry, key) and value is not None:
+                    setattr(entry, key, value)
+            # Recalculate balance if needed
+            entry.balance = (entry.total_bill or 0) - (entry.cash_received or 0)
+            # If fully paid, mark cleared
+            entry.is_cleared = entry.balance <= 0
+            self.db.commit()
+            self.db.refresh(entry)
+            logger.info("Khata entry updated: id=%s, customer=%s", entry.id, entry.customer_name)
+            return entry
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error("Failed to update khata entry id=%s: %s", entry.id, str(e))
+            raise AppException(f"Database error: failed to update khata entry {entry.id}")
     def get_entry(self, entry_id: str):
         try:
             entry = self.db.query(KhataEntry).filter(KhataEntry.id == entry_id).first()
