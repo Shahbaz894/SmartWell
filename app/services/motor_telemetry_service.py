@@ -32,7 +32,7 @@ class MotorTelemetryService:
             )
             raise AppException(f"Database error: failed to create telemetry for device {data.device_id}")
 
-    def get_device_telemetry(self, db: Session, device_id: UUID):
+    def get_device_telemetry(self, db: Session, device_id: str):
         try:
             telemetry_list = self.repo.get_by_device(db, device_id)
             logger.info(
