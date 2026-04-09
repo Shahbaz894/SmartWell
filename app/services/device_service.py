@@ -41,6 +41,33 @@ class DeviceService:
         except Exception as e:
             logger.error("Error in DeviceService: %s", str(e), exc_info=True)
             raise AppException(str(e))
+        
+    
+    def _update_device(self, device_id: str, user_id: str, device_data):
+        try:
+            logger.info("Updating device: %s", device_id)
+
+            # Get device and verify ownership
+            db_device = self.repo.get_by_id(device_id)
+            if not db_device or str(db_device.user_id) != user_id:
+                raise AppException("Device not found or unauthorized")
+
+            # Update reference_freq if provided
+            if getattr(device_data, "reference_freq", None) is not None:
+                db_device.reference_freq = device_data.reference_freq
+
+            # Update the device in DB
+            updated_device = self.repo.update_device(db_device)
+
+            logger.info("Device updated successfully: %s", device_id)
+            return updated_device
+
+        except Exception as e:
+            logger.error("Error updating device: %s", str(e), exc_info=True)
+            raise AppException(str(e))
+            
+    
+    
 
     def get_user_devices(self, user_id: str):
         try:

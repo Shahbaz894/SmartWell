@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 # 1. Import your settings object
 from app.core.config import settings
+from app.core.scheduler import start_scheduler
+from app.core.scheduler import start_scheduler
 import app.db.base_class  
 from app.db.base import Base
 from app.db.session import engine
@@ -131,3 +133,7 @@ async def root():
         "status": "online",
         "message": "IoT TubeWell Backend is running",
     }
+    
+@app.on_event("startup")
+def startup():
+    start_scheduler()

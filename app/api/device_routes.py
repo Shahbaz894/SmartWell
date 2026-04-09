@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.session import get_db
-from app.schemas.device_schema import DeviceCreate, DeviceResponse
+from app.schemas.device_schema import DeviceCreate, DeviceResponse, DeviceUpdate
 from app.services.device_service import DeviceService
 from app.core.logger import logger
 from app.core.exceptions import AppException
@@ -55,4 +55,30 @@ def get_devices(
             user_id,
             str(e)
         )
+        raise HTTPException(status_code=500, detail="Internal server error")
+    
+    
+@router.put("/{device_id}", response_model=DeviceResponse)
+def update_device(
+    device_id: str,
+    device: DeviceUpdate,
+    user_id: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    service = DeviceService(db)
+    try:
+        # Pass the update schema and identifiers to the service
+        updated_device = service.update_device(device_id, user_id, device)
+        
+        if not updated_device:
+            raise HTTPException(status_code=404, detail="Device not found")
+            
+        return updated_device
+
+    except AppException as e:
+        # Use 400 for validation/logic errors, but consider 404 if appropriate
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Log the actual error here for debugging on Railway
+        print(f"Update Error: {e}") 
         raise HTTPException(status_code=500, detail="Internal server error")
