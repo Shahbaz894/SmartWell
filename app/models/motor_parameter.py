@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Integer, Float, BigInteger, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, BigInteger, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
-from datetime import datetime
+
 
 class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"
