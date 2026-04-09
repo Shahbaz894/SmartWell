@@ -26,6 +26,7 @@ class MotorTelemetryRepository:
                 power_percent=data.power_load,
                 torque_percent=data.torque_load,
                 timestamp=int(datetime.now().timestamp() * 1000),
+                
                 is_live=1
             )
             db.add(telemetry)
