@@ -64,8 +64,8 @@ def get_device_telemetry(device_id: str, db: Session = Depends(get_db)):
             "Unexpected error fetching telemetry for device_id=%s: %s",
             device_id,
             str(e)
-        )
-        raise HTTPException(status_code=500, detail="Internal server error" {"error": str(e)})
+        ) 
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.delete("/{telemetry_id}")
