@@ -22,9 +22,10 @@ class DeviceCreate(BaseModel):
 # Update Device
 # -----------------------
 class DeviceUpdate(BaseModel):
-    device_name: Optional[str] = None
-    sim_number: Optional[str] = None
-    location: Optional[str] = None
+ device_name: Optional[str] = None
+ sim_number: Optional[str] = None
+ location: Optional[str] = None
+ reference_freq: Optional[float] = None
 
 
 # -----------------------

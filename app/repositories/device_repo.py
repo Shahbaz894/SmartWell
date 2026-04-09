@@ -2,6 +2,8 @@
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from app.models import device
+from app.models import device
 from app.models.device import Device
 from app.core.logger import logger
 from app.core.exceptions import AppException, NotFoundException
@@ -36,6 +38,14 @@ class DeviceRepository:
         device = self.db.query(Device).filter(Device.id == device_id).first()
         if not device:
             raise NotFoundException(f"Device {device_id} not found")
+        
+        
+        return device
+    
+    def update_device(self, device: Device):
+        self.db.add(device)
+        self.db.commit()
+        self.db.refresh(device)
         return device
 
     def delete_device(self, device_id: str):
