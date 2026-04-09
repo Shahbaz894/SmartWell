@@ -13,7 +13,7 @@ class MotorTelemetry(Base):
 
     # Unix timestamp from ESP32
     timestamp = Column(BigInteger, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)  # ADD THIS
+   
 
     # Electrical data
     freq = Column(Float)
