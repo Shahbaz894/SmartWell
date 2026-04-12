@@ -1,187 +1,195 @@
 # app/api/khata_routes.py
+#
+# FastAPI router for Khata (ledger) endpoints.
+#
+# Base prefix  : /khata
+# Auth         : JWT Bearer token required on every endpoint.
+# Ownership    : customer_id on KhataEntry is ALWAYS the authenticated user's
+#                ID — it is never accepted from the request body.
+#
+# Endpoint summary
+# ────────────────
+#  POST   /khata/            Create a new entry
+#  GET    /khata/            List all entries for the current user
+#  GET    /khata/{entry_id}  Fetch a single entry
+#  PATCH  /khata/{entry_id}  Update entry fields (manual correction)
+#  POST   /khata/{entry_id}/payment  Record an additional payment
+#  DELETE /khata/{entry_id}  Delete a fully-cleared entry
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+
 from app.db.session import get_db
-from app.schemas.khata_schema import KhataCreate, KhataUpdate, KhataPayment, KhataResponse
-from app.services.khata_service import KhataService
-from app.core.logger import logger
+from app.services.auth_service import get_current_user          # returns authenticated User object
 from app.core.exceptions import AppException, NotFoundException
-from typing import List
+from app.schemas.khata_schema import (
+    KhataCreate,
+    KhataUpdate,
+    KhataPayment,
+    KhataResponse,
+)
+from app.services.khata_service import KhataService
 
-router = APIRouter(prefix="/khata", tags=["Khata"])
-
-# Hardcoded for now — replace with JWT auth dependency later
-TEMP_USER_ID = "some-user-id"
+router = APIRouter(prefix="/khata", tags=["Accounting"])
 
 
-# ─────────────────────────────────────────────
+# ── Helper: resolve service ───────────────────────────────────────────────────
+
+def _get_service(db: Session = Depends(get_db)) -> KhataService:
+    """Dependency that constructs KhataService with the current DB session."""
+    return KhataService(db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CREATE
-# ─────────────────────────────────────────────
-@router.post("/", response_model=KhataResponse, status_code=201)
-def create_entry(data: KhataCreate, db: Session = Depends(get_db)):
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post(
+    "/",
+    response_model=KhataResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new Khata entry",
+    description=(
+        "Records a billing entry for a water consumer. "
+        "run_hours is derived automatically from a linked MotorLog if not "
+        "supplied manually. customer_id is always set from the JWT token."
+    ),
+)
+def create_entry(
+    body    : KhataCreate,
+    current_user = Depends(get_current_user),
+    service : KhataService = Depends(_get_service),
+):
     """
-    Create a new khata entry.
-    - run_hours auto-calculated from motor_log_id if not provided
-    - total_bill auto-calculated from run_hours * price_per_hour
-    - balance = total_bill - cash_received
-    - is_cleared = True if balance <= 0 (entry stays visible)
+    Create a Khata entry for the authenticated tube-well owner.
+
+    - Validates that the device belongs to the caller.
+    - Derives run_hours from motor_log if not provided.
+    - Calculates total_bill, balance, and is_cleared.
     """
-    service = KhataService(db)
-    try:
-        entry = service.create_entry(user_id=TEMP_USER_ID, data=data.dict())
-        logger.info(
-            "Khata entry created: customer=%s, total_bill=%s, balance=%s, is_cleared=%s",
-            entry.customer_name,
-            entry.total_bill,
-            entry.balance,
-            entry.is_cleared
-        )
-        return entry
-
-    except AppException as e:
-        logger.error("Failed to create khata entry: customer=%s, error=%s", data.customer_name, str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error creating khata entry: customer=%s, error=%s", data.customer_name, str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return service.create_entry(
+        user_id=current_user.id,
+        data=body.model_dump(),           # customer_id stripped inside service
+    )
 
 
-# ─────────────────────────────────────────────
-# GET ALL
-# ─────────────────────────────────────────────
-@router.get("/", response_model=List[KhataResponse])
-def get_all_entries(db: Session = Depends(get_db)):
-    """
-    Get all khata entries for the current user.
-    Cleared entries remain visible with is_cleared=True.
-    """
-    service = KhataService(db)
-    try:
-        entries = service.get_all_entries(user_id=TEMP_USER_ID)
-        logger.info("Fetched %d khata entries for user=%s", len(entries), TEMP_USER_ID)
-        return entries
-
-    except AppException as e:
-        logger.error("Failed to fetch khata entries: %s", str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error fetching khata entries: %s", str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+# ─────────────────────────────────────────────────────────────────────────────
+# LIST
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get(
+    "/",
+    response_model=list[KhataResponse],
+    summary="Get all Khata entries",
+    description=(
+        "Returns every entry for the authenticated user, newest first. "
+        "Cleared entries remain visible (is_cleared=True)."
+    ),
+)
+def get_all_entries(
+    current_user = Depends(get_current_user),
+    service      : KhataService = Depends(_get_service),
+):
+    """List all ledger entries owned by the authenticated user."""
+    return service.get_all_entries(user_id=current_user.id)
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # GET ONE
-# ─────────────────────────────────────────────
-@router.get("/{entry_id}", response_model=KhataResponse)
-def get_entry(entry_id: str, db: Session = Depends(get_db)):
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get(
+    "/{entry_id}",
+    response_model=KhataResponse,
+    summary="Get a single Khata entry",
+)
+def get_entry(
+    entry_id     : str,
+    current_user = Depends(get_current_user),
+    service      : KhataService = Depends(_get_service),
+):
+    """Fetch a single Khata entry. Returns 404 if not found or not owned."""
+    return service.get_entry(entry_id=entry_id, user_id=current_user.id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UPDATE ENTRY  (general field corrections)
+# ─────────────────────────────────────────────────────────────────────────────
+@router.patch(
+    "/{entry_id}",
+    response_model=KhataResponse,
+    summary="Update Khata entry fields",
+    description=(
+        "Allows manual correction of billing fields "
+        "(customer_name, run_hours, price_per_hour, total_bill, cash_received, date). "
+        "Balance and is_cleared are recalculated automatically."
+    ),
+)
+def update_entry(
+    entry_id     : str,
+    body         : KhataUpdate,
+    current_user = Depends(get_current_user),
+    service      : KhataService = Depends(_get_service),
+):
     """
-    Get a single khata entry by ID.
+    Apply partial field updates to a Khata entry.
+    Only non-None fields in the body are changed.
     """
-    service = KhataService(db)
-    try:
-        entry = service.get_entry(entry_id)
-        return entry
-
-    except NotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except AppException as e:
-        logger.error("Failed to fetch khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error fetching khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return service.update_entry(
+        entry_id=entry_id,
+        user_id=current_user.id,
+        data=body.model_dump(exclude_none=True),
+    )
 
 
-# ─────────────────────────────────────────────
-# UPDATE  (general field update)
-# ─────────────────────────────────────────────
-@router.patch("/{entry_id}", response_model=KhataResponse)
-def update_entry(entry_id: str, data: KhataUpdate, db: Session = Depends(get_db)):
+# ─────────────────────────────────────────────────────────────────────────────
+# RECORD PAYMENT  (additive)
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post(
+    "/{entry_id}/payment",
+    response_model=KhataResponse,
+    summary="Record a payment on an entry",
+    description=(
+        "Adds the supplied cash_received amount to the existing balance. "
+        "Once the balance reaches zero, is_cleared is set to True. "
+        "Cleared entries remain visible until explicitly deleted."
+    ),
+)
+def update_payment(
+    entry_id     : str,
+    body         : KhataPayment,
+    current_user = Depends(get_current_user),
+    service      : KhataService = Depends(_get_service),
+):
+    """Record an additional payment. Raises 400 if already cleared."""
+    return service.update_payment(
+        entry_id=entry_id,
+        user_id=current_user.id,
+        cash_received=body.cash_received,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DELETE  (only when fully cleared)
+# ─────────────────────────────────────────────────────────────────────────────
+@router.delete(
+    "/{entry_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete a cleared Khata entry",
+    description=(
+        "Permanently removes a Khata entry from the database. "
+        "Deletion is only permitted after the entry is fully cleared "
+        "(is_cleared=True / balance=0). "
+        "Call the /payment endpoint first to settle any outstanding balance."
+    ),
+)
+def delete_entry(
+    entry_id     : str,
+    current_user = Depends(get_current_user),
+    service      : KhataService = Depends(_get_service),
+):
     """
-    Update allowed fields on an existing entry.
-    balance and is_cleared are auto-recalculated after update.
+    Hard-delete a cleared Khata entry.
+
+    Returns 400 if the balance is still pending.
+    Returns 404 if the entry is not found or not owned by the caller.
     """
-    service = KhataService(db)
-    try:
-        entry = service.get_entry(entry_id)
-        updated = service.repo.update_entry(
-            entry,
-            data.dict(exclude_none=True)  # only send fields that were actually provided
-        )
-        logger.info(
-            "Khata entry updated: id=%s, balance=%s, is_cleared=%s",
-            entry_id,
-            updated.balance,
-            updated.is_cleared
-        )
-        return updated
-
-    except NotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except AppException as e:
-        logger.error("Failed to update khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error updating khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ─────────────────────────────────────────────
-# PAY  (add payment — entry stays visible after clearing)
-# ─────────────────────────────────────────────
-@router.patch("/{entry_id}/pay", response_model=KhataResponse)
-def update_payment(entry_id: str, data: KhataPayment, db: Session = Depends(get_db)):
-    """
-    Add a payment to an existing entry.
-    - Adds cash_received to existing amount
-    - Recalculates balance
-    - Sets is_cleared=True if balance <= 0
-    - Entry stays visible after clearing (is_cleared is just a flag)
-    """
-    service = KhataService(db)
-    try:
-        entry = service.update_payment(entry_id, data.cash_received)
-        logger.info(
-            "Payment updated: id=%s, cash_received=%s, balance=%s, is_cleared=%s",
-            entry_id,
-            data.cash_received,
-            entry.balance,
-            entry.is_cleared
-        )
-        return entry
-
-    except NotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except AppException as e:
-        logger.error("Failed to update payment for entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error updating payment for entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ─────────────────────────────────────────────
-# DELETE  (only allowed when is_cleared=True)
-# ─────────────────────────────────────────────
-@router.delete("/{entry_id}", status_code=200)
-def delete_entry(entry_id: str, db: Session = Depends(get_db)):
-    """
-    Delete a khata entry.
-    Only allowed when entry is fully cleared (balance == 0).
-    Cleared entries are NOT auto-deleted — explicit DELETE required.
-    """
-    service = KhataService(db)
-    try:
-        service.delete_entry(entry_id)
-        logger.info("Khata entry deleted: id=%s", entry_id)
-        return {"detail": "Entry deleted successfully"}
-
-    except NotFoundException as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except AppException as e:
-        logger.error("Failed to delete khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Unexpected error deleting khata entry id=%s: %s", entry_id, str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
+    service.delete_entry(entry_id=entry_id, user_id=current_user.id)
+    return {"detail": "Entry successfully deleted", "entry_id": entry_id}
