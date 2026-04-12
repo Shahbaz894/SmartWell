@@ -104,7 +104,8 @@ app.include_router(device_routes.router, prefix="/devices", tags=["Devices"])
 app.include_router(motor_routes.router, prefix="/motors", tags=["Motors"])
 app.include_router(motor_telemetry_routes.router, prefix="/telemetry", tags=["Telemetry"])
 app.include_router(schedule_routes.router, prefix="/schedules", tags=["Schedules"])
-app.include_router(khata_routes.router, prefix="/khata", tags=["Accounting"])
+app.include_router(khata_routes.router, tags=["Accounting"])
+
 
 # --- Global Exception Handler ---
 @app.exception_handler(Exception)
