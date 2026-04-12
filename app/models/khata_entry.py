@@ -34,7 +34,7 @@ class KhataEntry(Base):
     )
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Foreign Keys
+    # Foreign Keys for project
     # ─────────────────────────────────────────────────────────────────────────
 
     # Tube-well owner — always set from JWT, never from request body
@@ -62,7 +62,7 @@ class KhataEntry(Base):
     customer_name = Column(String, nullable=False)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Billing Fields
+    # Billing Fields update and parameter
     # ─────────────────────────────────────────────────────────────────────────
     date           = Column(Date,           nullable=False)
     run_hours      = Column(Numeric(5,  2), nullable=False)
