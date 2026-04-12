@@ -20,76 +20,49 @@ class KhataService:
     # ─────────────────────────────────────────────
     def create_entry(self, user_id: str, data: dict):
         try:
-            # Validate device belongs to user
-            device = self.db.query(Device).filter_by(
-                id=data["device_id"], user_id=user_id
-            ).first()
-
+            # 1. Device Validation
+            device = self.db.query(Device).filter_by(id=data["device_id"], user_id=user_id).first()
             if not device:
-                raise AppException("Invalid device_id or device doesn't belong to you")
+                raise AppException("Device not found or access denied")
 
-            # Customer name required
-            if not data.get("customer_name"):
-                raise AppException("customer_name is required")
-
-            # Assign customer_id from logged-in user
-            data["customer_id"] = str(user_id)
-
-            # Auto date
+            # 2. Auto-date
             if not data.get("date"):
                 data["date"] = datetime.now().date()
 
-            # Auto run_hours from motor log
+            # 3. Auto-calculate run_hours from MotorLog if missing
             if not data.get("run_hours") and data.get("motor_log_id"):
-                log = self.db.query(MotorLog).filter_by(
-                    id=data["motor_log_id"]
-                ).first()
-
-                if not log:
-                    raise AppException("Invalid motor_log_id: log not found")
-
-                if log.start_time and log.end_time:
-                    duration = (log.end_time - log.start_time).total_seconds()
-                    data["run_hours"] = round(duration / 3600, 2)
-                else:
-                    raise AppException("Motor log is incomplete: motor not stopped yet")
+                log = self.db.query(MotorLog).filter_by(id=data["motor_log_id"]).first()
+                if not log or not (log.start_time and log.end_time):
+                    raise AppException("Motor log is missing or incomplete (motor still running?)")
+                
+                duration_seconds = (log.end_time - log.start_time).total_seconds()
+                data["run_hours"] = round(duration_seconds / 3600, 2)
 
             if not data.get("run_hours"):
-                raise AppException("run_hours is required (or provide a valid motor_log_id)")
+                raise AppException("Could not determine run_hours")
 
-            # Billing calculations
+            # 4. Billing Calculations
             hours = float(data["run_hours"])
             price = float(data["price_per_hour"])
-
+            
             if data.get("total_bill") is None:
                 data["total_bill"] = round(hours * price, 2)
 
             cash = float(data.get("cash_received") or 0)
+            data["balance"] = round(data["total_bill"] - cash, 2)
+            data["is_cleared"] = data["balance"] <= 0
 
-            if cash < 0:
-                raise AppException("Cash received cannot be negative")
-
-            if cash > data["total_bill"]:
-                raise AppException("Cash received cannot exceed total bill")
-
-            data["cash_received"] = round(cash, 2)
-            data["balance"]       = round(data["total_bill"] - cash, 2)
-            data["is_cleared"]    = data["balance"] <= 0
-
-            # Build and save entry
+            # 5. Save to Database
             entry = KhataEntry(
                 id=str(uuid4()),
-                created_at=datetime.now(),
+                customer_id=user_id, # Link to the logged-in user
                 **data
             )
-
             return self.repo.create_entry(entry)
 
-        except AppException:
-            raise  # re-raise known errors as-is
         except Exception as e:
-            logger.error("Create khata entry failed: %s", str(e), exc_info=True)
-            raise AppException(f"Unexpected error while creating entry: {str(e)}")
+            logger.error(f"Khata creation failed: {e}")
+            raise AppException(str(e))
 
     # ─────────────────────────────────────────────
     # UPDATE PAYMENT  (partial or full payment)
