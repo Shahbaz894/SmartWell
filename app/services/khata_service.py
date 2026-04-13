@@ -149,7 +149,7 @@ class KhataService:
             # ── Step 6: Persist ───────────────────────────────────────────────
             entry = KhataEntry(
                 id          = str(uuid4()),
-                customer_id = user_id,   # always from JWT — never from body
+                user_id = user_id,   # always from JWT — never from body
                 **data
             )
             created = self.repo.create_entry(entry)
@@ -191,11 +191,11 @@ class KhataService:
         try:
             entry = self.repo.get_entry(entry_id)
 
-            # Ownership check — customer_id on KhataEntry == user_id from JWT
-            if entry.customer_id != user_id:
+            # Ownership check — user_id on KhataEntry == user_id from JWT
+            if entry.user_id != user_id:
                 logger.warning(
                     "Payment update denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.customer_id
+                    entry_id, user_id, entry.user_id
                 )
                 raise AppException("Access denied: this entry does not belong to you")
 
@@ -251,10 +251,10 @@ class KhataService:
         try:
             entry = self.repo.get_entry(entry_id)
 
-            if entry.customer_id != user_id:
+            if entry.user_id != user_id:
                 logger.warning(
                     "Update denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.customer_id
+                    entry_id, user_id, entry.user_id
                 )
                 raise AppException("Access denied: this entry does not belong to you")
 
@@ -300,7 +300,7 @@ class KhataService:
         """
         try:
             entry = self.repo.get_entry(entry_id)
-            if entry.customer_id != user_id:
+            if entry.user_id != user_id:
                 raise AppException("Access denied: this entry does not belong to you")
             return entry
         except (AppException, NotFoundException):
@@ -329,10 +329,10 @@ class KhataService:
         try:
             entry = self.repo.get_entry(entry_id)
 
-            if entry.customer_id != user_id:
+            if entry.user_id != user_id:
                 logger.warning(
                     "Delete denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.customer_id
+                    entry_id, user_id, entry.user_id
                 )
                 raise AppException("Access denied: this entry does not belong to you")
 
