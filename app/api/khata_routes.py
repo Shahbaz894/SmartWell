@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services.auth_service import get_current_user          # returns authenticated User object
+from app.services.auth_service import get_current_user         # returns authenticated User object
 from app.core.exceptions import AppException, NotFoundException
 from app.schemas.khata_schema import (
     KhataCreate,
