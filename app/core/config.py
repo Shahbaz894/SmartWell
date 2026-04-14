@@ -35,16 +35,8 @@
 
 # # 3. Instantiate settings
 # settings = Settings()
-from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
-
-# __file__ = E:\SmartWell\app\core\config.py
-# .parent       → app\core
-# .parent.parent → app
-# .parent.parent.parent → E:\SmartWell  (root)
-root_dir = Path(__file__).resolve().parent.parent.parent
-env_path = root_dir / ".env"
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -60,7 +52,7 @@ class Settings(BaseSettings):
         return v
 
     model_config = SettingsConfigDict(
-        env_file=env_path,
+        env_file=".env",        # used locally only
         env_file_encoding="utf-8",
         extra="ignore",
     )
