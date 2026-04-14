@@ -57,7 +57,7 @@ def create_access_token(subject: str) -> str:
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {"sub": subject, "exp": expire}
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     logger.debug("Access token created: sub=%s, exp=%s", subject, expire.isoformat())
     return token
 
@@ -82,11 +82,7 @@ def decode_access_token(token: str) -> str:
         Token is missing the ``sub`` claim, expired, or otherwise invalid.
     """
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         user_id: str = payload.get("sub")
         if not user_id:
             raise AppException(
