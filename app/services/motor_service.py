@@ -83,7 +83,7 @@ class MotorService:
                 device_id, trigger, exc, exc_info=True,
             )
             raise AppException(
-                status_code=400,
+                status_code=500,
                 detail=f"Database error: failed to start motor for device '{device_id}'",
             )
 
@@ -147,7 +147,7 @@ class MotorService:
                 device_id, exc, exc_info=True,
             )
             raise AppException(
-                status_code=400,
+                status_code=500,
                 detail=f"Database error: failed to stop motor for device '{device_id}'",
             )
 
