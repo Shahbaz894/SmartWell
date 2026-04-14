@@ -34,7 +34,7 @@ class DeviceRepository:
             logger.error("Failed to fetch devices for user_id=%s: %s", user_id, str(e))
             raise AppException("Database error while fetching devices")
 
-    def get_device(self, device_id: str):
+    def get_by_id(self, device_id: str):
         device = self.db.query(Device).filter(Device.id == device_id).first()
         if not device:
             raise NotFoundException(f"Device {device_id} not found")
@@ -50,7 +50,7 @@ class DeviceRepository:
 
     def delete_device(self, device_id: str):
         try:
-            device = self.get_device(device_id)
+            device = self.get_by_id(device_id)
             self.db.delete(device)
             self.db.commit()
             logger.info("Device deleted: id=%s", device_id)
