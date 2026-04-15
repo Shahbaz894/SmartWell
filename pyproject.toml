@@ -20,4 +20,5 @@ dependencies = [
     "uvicorn[standard]>=0.41.0",
     "bcrypt==4.0.1",
     "requests>=2.33.1",
+    "python-multipart>=0.0.26",
 ]

@@ -1,3 +1,7 @@
+docker build -t shahbaz/smartwell:v1 . && 
+docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest && 
+docker push shahbazzulfiqar/smartwell:latest
+
 # IoT Tube Well Management System Backend
 
 A production-ready backend for an **IoT based Tube Well Motor Control System**.  

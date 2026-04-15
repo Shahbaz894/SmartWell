@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from datetime import date as DateType
-from typing import Optional
+from typing import Optional, Literal
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -13,6 +13,10 @@ class KhataCreate(BaseModel):
     NOTE:
     user_id is NOT accepted from request body.
     It is always taken from authenticated JWT user.
+
+    remaining_balance and payment_status are accepted in the request body
+    but are ignored — they are always computed server-side from
+    total_bill and cash_received.
     """
 
     # Required
@@ -26,6 +30,10 @@ class KhataCreate(BaseModel):
     date: Optional[DateType] = None
     run_hours: Optional[float] = None
     total_bill: Optional[float] = None
+
+    # Accepted but ignored — computed server-side
+    remaining_balance: Optional[float] = None
+    payment_status: Optional[Literal["paid", "partial", "unpaid"]] = None
 
     @field_validator("price_per_hour")
     @classmethod
@@ -110,11 +118,16 @@ class KhataPayment(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 class KhataResponse(BaseModel):
     """
-    Response schema
+    Response schema.
+
+    remaining_balance  — mirrors balance; computed in service layer.
+    payment_status     — "paid" | "partial" | "unpaid"; computed in service layer.
+    Both are NOT stored in the DB — they are attached to the ORM object
+    dynamically before returning from each service method.
     """
 
     id: str
-    user_id: Optional[str]   # 🔥 replaced from customer_id
+    user_id: Optional[str]
     customer_name: str
     device_id: str
     motor_log_id: Optional[str]
@@ -125,5 +138,7 @@ class KhataResponse(BaseModel):
     cash_received: float
     balance: float
     is_cleared: bool
+    remaining_balance: Optional[float] = None          # computed, not stored
+    payment_status: Optional[str] = None               # computed, not stored
 
     model_config = ConfigDict(from_attributes=True)

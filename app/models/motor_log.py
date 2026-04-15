@@ -9,6 +9,7 @@ class MotorLog(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     device_id = Column(String, ForeignKey("devices.id"), nullable=False)
+    # device_id = Column(String,  nullable=False)
 
     start_time = Column(TIMESTAMP, nullable=False)
     end_time = Column(TIMESTAMP)

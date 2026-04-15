@@ -105,40 +105,24 @@ class MotorRepository:
     # ─────────────────────────────────────────────────────────────
     # GET RUNNING MOTOR
     # ─────────────────────────────────────────────────────────────
+   
     def get_running_motor(self, device_id: str):
         try:
             running = (
                 self.db.query(MotorLog)
                 .filter(
                     MotorLog.device_id == device_id,
-                    MotorLog.end_time.is_(None)   # ✅ FIXED (VERY IMPORTANT)
+                    MotorLog.end_time.is_(None)
                 )
                 .first()
             )
-
-            if running:
-                logger.info(
-                    "Found running motor log: id=%s, device_id=%s",
-                    running.id,
-                    device_id
-                )
-            else:
-                logger.info(
-                    "No running motor log found for device_id=%s",
-                    device_id
-                )
-
             return running
 
-        except SQLAlchemyError:
-            logger.error(
-                "DB ERROR fetching motor log: device=%s",
-                device_id,
-                exc_info=True   # 🔥 MUST HAVE (gives real error)
-            )
+        except Exception as e:  # ← catch ALL exceptions temporarily
+            logger.error("REAL ERROR: %s", repr(e), exc_info=True)  # ← repr gives full details
             raise AppException(
                 status_code=500,
-                detail=f"Database error: failed to fetch running motor log for device {device_id}"
+                detail=repr(e)  # ← return real error in response temporarily
             )
 
     # ─────────────────────────────────────────────────────────────
