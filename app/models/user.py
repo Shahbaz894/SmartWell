@@ -12,4 +12,5 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     google_id = Column(String(255), nullable=True)
+    role = Column(String(20), default="user")  # 👈 ADD THIS
     created_at = Column(TIMESTAMP, server_default="now()")

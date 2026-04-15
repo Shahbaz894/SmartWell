@@ -1,5 +1,3 @@
-# app/services/auth_service.py
-
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from passlib.context import CryptContext
@@ -26,11 +24,21 @@ class AuthService:
         return pwd_context.verify(plain, hashed)
 
     # ───────── REGISTER ─────────
-    def register_user(self, name: str, email: str, password: str, role="user"):
+    def register_user(self, name: str, email: str, password: str, role: str = "user"):
 
         try:
-            if self.repo.get_user_by_email(email):
+            # ⚠️ SAFE CHECK (repo might raise OR return None)
+            try:
+                existing = self.repo.get_user_by_email(email)
+            except NotFoundException:
+                existing = None
+
+            if existing:
                 raise AppException(400, "Email already registered")
+
+            # 🔐 SECURITY RULE: only backend can assign admin
+            if role not in ["user", "admin"]:
+                role = "user"
 
             user = User(
                 name=name,
@@ -62,7 +70,7 @@ class AuthService:
                 "access_token": token,
                 "token_type": "bearer",
                 "user": {
-                    "id": user.id,
+                    "id": str(user.id),
                     "email": user.email,
                     "name": user.name,
                     "role": user.role,

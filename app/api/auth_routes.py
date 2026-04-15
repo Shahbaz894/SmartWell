@@ -1,12 +1,10 @@
-# app/api/auth_routes.py
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.db.session import get_db
 from app.schemas.user_schema import UserCreate, UserLogin
 from app.services.auth_service import AuthService
-from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -21,13 +19,18 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
         name=body.name,
         email=body.email,
         password=body.password,
-        role=getattr(body, "role", "user"),
+        role=body.role or "user",
     )
 
-    return user
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+    }
 
 
-# ───────── LOGIN (FLUTTER + NEXT JS) ─────────
+# ───────── LOGIN (Flutter + Next.js) ─────────
 @router.post("/login")
 def login(body: UserLogin, db: Session = Depends(get_db)):
 
