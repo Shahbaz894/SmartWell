@@ -1,14 +1,19 @@
+from fastapi import Depends, logger
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from passlib.context import CryptContext
 
+from app.db.session import get_db
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
-from app.core.exceptions import AppException, NotFoundException
+from app.core.exceptions import AppException, NotFoundException, UnauthorizedAccess
 from app.services.jwt_handler import JWTHandler
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
 
 
 class AuthService:
@@ -82,3 +87,6 @@ class AuthService:
 
         except SQLAlchemyError:
             raise AppException(500, "Database error during login")
+        
+        
+    

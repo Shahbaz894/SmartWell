@@ -1,191 +1,47 @@
-# app/api/motor_telemetry_routes.py
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import List
-
 from app.db.session import get_db
-from app.services.motor_telemetry_service import MotorTelemetryService
-from app.schemas.motor_telemetry_schema import (
-    MotorTelemetryCreate,
-    MotorTelemetryResponse
-)
+from app.services.motor_service import MotorService
 from app.core.logger import logger
-from app.core.exceptions import (
-    AppException,
-    ValidationException,
-    NotFoundException
-)
+from app.core.exceptions import AppException
+
+router = APIRouter(prefix="/motor", tags=["Motor"])
 
 
-router = APIRouter(
-    prefix="/telemetry",
-    tags=["Motor Telemetry"]
-)
-
-
-# =========================================================
-# 🔧 Dependency Injection
-# =========================================================
-def get_service():
-    """Provide MotorTelemetryService instance."""
-    return MotorTelemetryService()
-
-
-# =========================================================
-# 🚀 CREATE TELEMETRY (ESP32)
-# =========================================================
-@router.post("/devices/{device_id}", response_model=MotorTelemetryResponse)
-def create_telemetry(
-    device_id: str,
-    data: MotorTelemetryCreate,
-    db: Session = Depends(get_db),
-    service: MotorTelemetryService = Depends(get_service)
-):
-    """
-    Create telemetry record for a specific device.
-
-    This endpoint is primarily used by ESP32 devices to send
-    real-time motor data such as voltage, current, power, etc.
-
-    Args:
-        device_id (str): Unique identifier of the device
-        data (MotorTelemetryCreate): Telemetry payload
-        db (Session): Database session
-
-    Returns:
-        MotorTelemetryResponse: Created telemetry record
-    """
-
-    logger.info("Create telemetry request received: device_id=%s", device_id)
-
-    # ✅ Validate device_id consistency
-    if data.device_id and data.device_id != device_id:
-        logger.warning(
-            "Device ID mismatch: path=%s body=%s",
-            device_id,
-            data.device_id
-        )
-        raise ValidationException("Device ID mismatch")
-
+@router.post("/{device_id}/start")
+def start_motor(device_id: str, db: Session = Depends(get_db)):
+    service = MotorService(db)
     try:
-        telemetry = service.create_telemetry(db, device_id, data)
+        motor_log = service.start_motor(device_id, "manual")
+        logger.info("Motor started: device_id=%s, log_id=%s", device_id, motor_log.id)
+        return motor_log
+
+    except AppException:
+        raise  # ✅ let FastAPI handle it with the correct status_code
+
+    except Exception as e:
+        logger.error("Unexpected error starting motor: device_id=%s: %s", device_id, e, exc_info=True)
+        raise AppException(status_code=500, detail="Internal server error")
+
+
+@router.post("/{device_id}/stop")
+def stop_motor(device_id: str, db: Session = Depends(get_db)):
+    service = MotorService(db)
+    try:
+        motor_log = service.stop_motor(device_id)
+        if not motor_log:
+            logger.warning("No running motor found to stop: device_id=%s", device_id)
+            raise AppException(status_code=404, detail="No running motor found")
 
         logger.info(
-            "Telemetry created successfully: device_id=%s telemetry_id=%s",
-            device_id,
-            telemetry.id
+            "Motor stopped: device_id=%s, log_id=%s, duration=%s minutes",
+            device_id, motor_log.id, motor_log.duration_minutes
         )
-
-        return telemetry
+        return motor_log
 
     except AppException:
-        # Already handled business error
-        raise
+        raise  # ✅ let FastAPI handle it with the correct status_code
 
     except Exception as e:
-        logger.error(
-            "Unexpected error while creating telemetry: device_id=%s error=%s",
-            device_id,
-            str(e),
-            exc_info=True
-        )
-        db.rollback()
-        raise AppException(500, "Failed to create telemetry")
-
-
-# =========================================================
-# 📊 GET TELEMETRY BY DEVICE
-# =========================================================
-@router.get(
-    "/devices/{device_id}",
-    response_model=List[MotorTelemetryResponse]
-)
-def get_device_telemetry(
-    device_id: str,
-    db: Session = Depends(get_db),
-    service: MotorTelemetryService = Depends(get_service)
-):
-    """
-    Fetch all telemetry records for a given device.
-
-    Args:
-        device_id (str): Device identifier
-        db (Session): Database session
-
-    Returns:
-        List[MotorTelemetryResponse]: List of telemetry records
-    """
-
-    logger.info("Fetching telemetry: device_id=%s", device_id)
-
-    try:
-        telemetry_list = service.get_device_telemetry(db, device_id)
-
-        logger.info(
-            "Telemetry fetched successfully: device_id=%s count=%d",
-            device_id,
-            len(telemetry_list)
-        )
-
-        return telemetry_list
-
-    except AppException:
-        raise
-
-    except Exception as e:
-        logger.error(
-            "Unexpected error fetching telemetry: device_id=%s error=%s",
-            device_id,
-            str(e),
-            exc_info=True
-        )
-        raise AppException(500, "Failed to fetch telemetry")
-
-
-# =========================================================
-# 🗑 DELETE TELEMETRY
-# =========================================================
-@router.delete("/{telemetry_id}")
-def delete_telemetry(
-    telemetry_id: UUID,
-    db: Session = Depends(get_db),
-    service: MotorTelemetryService = Depends(get_service)
-):
-    """
-    Delete a telemetry record by its ID.
-
-    Args:
-        telemetry_id (UUID): Telemetry record ID
-        db (Session): Database session
-
-    Returns:
-        dict: Success message
-    """
-
-    logger.info("Delete telemetry request: id=%s", telemetry_id)
-
-    try:
-        deleted = service.delete_telemetry(db, telemetry_id)
-
-        if not deleted:
-            logger.warning("Telemetry not found: id=%s", telemetry_id)
-            raise NotFoundException("Telemetry not found")
-
-        logger.info("Telemetry deleted successfully: id=%s", telemetry_id)
-
-        return {"detail": "Telemetry deleted successfully"}
-
-    except AppException:
-        raise
-
-    except Exception as e:
-        logger.error(
-            "Unexpected error deleting telemetry: id=%s error=%s",
-            telemetry_id,
-            str(e),
-            exc_info=True
-        )
-        db.rollback()
-        raise AppException(500, "Failed to delete telemetry")
+        logger.error("Unexpected error stopping motor: device_id=%s: %s", device_id, e, exc_info=True)
+        raise AppException(status_code=500, detail="Internal server error")
