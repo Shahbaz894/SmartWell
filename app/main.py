@@ -1,19 +1,20 @@
 # main.py
 #
 # FastAPI application entry point.
-# Handles startup/shutdown lifecycle, router registration,
+# Handles startup and shutdown lifecycle, router registration,
+# database initialization, scheduler startup, MQTT consumer startup,
 # and global exception handling.
 #
 # ── Router Prefixes ───────────────────────────────────────────────────────────
 #  Each router already declares its own prefix internally.
-#  DO NOT add prefix again here — it would double the path.
+#  DO NOT add prefix again here.
 #
-#  auth_routes      → prefix="/auth"      → /auth/login, /auth/register
-#  device_routes    → prefix="/devices"   → /devices/
-#  motor_routes     → prefix="/motors"    → /motors/
-#  telemetry_routes → prefix="/telemetry" → /telemetry/
-#  schedule_routes  → prefix="/schedules" → /schedules/
-#  khata_routes     → prefix="/khata"     → /khata/
+#  auth_routes             → prefix="/auth"
+#  device_routes           → prefix="/devices"
+#  motor_routes            → prefix="/motor"
+#  motor_telemetry_routes  → prefix="/telemetry"
+#  schedule_routes         → prefix="/schedules"
+#  khata_routes            → prefix="/khata"
 # ──────────────────────────────────────────────────────────────────────────────
 
 import asyncio
@@ -23,17 +24,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
-
-from app.core.config import settings
-from app.core.scheduler import start_scheduler
-from app.core.logger import logger
-from app.core.exceptions import AppException
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 import app.db.base_class
-from app.db.base import Base
-from app.db.session import engine
-
-# Import routers
 from app.api import (
     auth_routes,
     device_routes,
@@ -42,28 +35,46 @@ from app.api import (
     schedule_routes,
     khata_routes,
 )
+from app.core.config import settings
+from app.core.exceptions import AppException
+from app.core.logger import logger
+from app.core.scheduler import start_scheduler
+from app.db.base import Base
+from app.db.session import engine
+from app.services.mqtt_telemetry_consumer_service import MQTTTelemetryConsumerService
 
-
-# ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Startup: verify DB connection with retries, create tables, start scheduler.
-    Shutdown: log graceful stop.
+    Application lifespan manager.
+
+    Startup flow:
+    - validate DATABASE_URL
+    - check database connectivity with retries
+    - create tables if needed
+    - start scheduler
+    - start MQTT telemetry consumer
+
+    Shutdown flow:
+    - stop MQTT telemetry consumer
+    - log graceful shutdown
     """
-    db_url    = settings.DATABASE_URL
-    masked    = db_url.split("@")[-1] if db_url and "@" in db_url else "NOT_SET"
-    retries   = 10
+    db_url = settings.DATABASE_URL
+    masked_host = db_url.split("@")[-1] if db_url and "@" in db_url else "NOT_SET"
+
+    retries = 10
+    retry_delay_seconds = 3
     connected = False
 
-    logger.info("Checking DB host: %s", masked)
+    mqtt_telemetry_consumer = MQTTTelemetryConsumerService()
+
+    logger.info("Starting IoT TubeWell API")
+    logger.info("Checking database host: %s", masked_host)
 
     if not db_url:
-        logger.critical("FATAL: DATABASE_URL not configured")
-        raise AppException(status_code=500, detail="DATABASE_URL is not configured")
-
-    logger.info("Starting IoT TubeWell API...")
+        logger.critical("FATAL: DATABASE_URL is not configured")
+        raise RuntimeError("DATABASE_URL is not configured")
 
     while retries > 0 and not connected:
         try:
@@ -72,47 +83,93 @@ async def lifespan(app: FastAPI):
                     conn.execute(text("SELECT 1"))
                     Base.metadata.create_all(bind=engine)
 
-            await asyncio.get_event_loop().run_in_executor(None, check_db)
-            logger.info("Database connection established and tables verified.")
+            await asyncio.get_running_loop().run_in_executor(None, check_db)
+
             connected = True
+            logger.info("Database connection established and tables verified")
 
         except (OperationalError, SQLAlchemyError) as exc:
             retries -= 1
             logger.warning(
-                "DB connection failed (%d retries left): %s. Retrying in 3s...",
-                retries, exc,
+                "Database connection failed (%s retries left): %s. Retrying in %ss",
+                retries,
+                exc,
+                retry_delay_seconds,
             )
-            await asyncio.sleep(3)
+            await asyncio.sleep(retry_delay_seconds)
+
+        except Exception as exc:
+            logger.critical(
+                "Unexpected database initialization error: %s",
+                exc,
+                exc_info=True,
+            )
+            raise RuntimeError("Unexpected database initialization error") from exc
 
     if not connected:
-        logger.critical("FATAL: Could not connect to database after all retries.")
-        raise AppException(
-            status_code=500,
-            detail="Database initialization failed permanently.",
+        logger.critical("FATAL: Could not connect to database after all retries")
+        raise RuntimeError("Database initialization failed permanently")
+
+    try:
+        start_scheduler()
+        logger.info("Scheduler started successfully")
+    except Exception as exc:
+        logger.critical(
+            "FATAL: Failed to start scheduler: %s",
+            exc,
+            exc_info=True,
+        )
+        raise RuntimeError("Failed to start scheduler") from exc
+    
+    try:
+        stop_scheduler()
+        logger.info("Scheduler stopped successfully")
+    except Exception as exc:
+        logger.error(
+            "Failed to stop scheduler cleanly: %s",
+            exc,
+            exc_info=True,
         )
 
-    start_scheduler()
-    logger.info("Scheduler started.")
+    try:
+        mqtt_telemetry_consumer.start()
+        app.state.mqtt_telemetry_consumer = mqtt_telemetry_consumer
+        logger.info("MQTT telemetry consumer started successfully")
+    except Exception as exc:
+        logger.critical(
+            "FATAL: Failed to start MQTT telemetry consumer: %s",
+            exc,
+            exc_info=True,
+        )
+        raise RuntimeError("Failed to start MQTT telemetry consumer") from exc
 
-    yield  # ── application running ──
+    try:
+        yield
 
-    logger.info("Shutting down IoT TubeWell API...")
+    finally:
+        logger.info("Shutting down IoT TubeWell API")
 
+        consumer = getattr(app.state, "mqtt_telemetry_consumer", None)
+        if consumer:
+            try:
+                consumer.stop()
+                logger.info("MQTT telemetry consumer stopped successfully")
+            except Exception as exc:
+                logger.error(
+                    "Failed to stop MQTT telemetry consumer cleanly: %s",
+                    exc,
+                    exc_info=True,
+                )
 
-# ── App instance ──────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title       = "IoT TubeWell API",
-    description = "Backend for ESP32 and Flutter Integration",
-    version     = "1.0.0",
-    lifespan    = lifespan,
+    title="IoT TubeWell API",
+    description="Backend for ESP32, VFD, MQTT, and Flutter integration",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-
 # ── Routers ───────────────────────────────────────────────────────────────────
-#
-# Each router owns its prefix — do NOT add prefix here.
-# Tags here are optional overrides; removing them uses the router's own tags.
 
 app.include_router(auth_routes.router)
 app.include_router(device_routes.router)
@@ -121,34 +178,38 @@ app.include_router(motor_telemetry_routes.router)
 app.include_router(schedule_routes.router)
 app.include_router(khata_routes.router)
 
-
 # ── Global exception handler ──────────────────────────────────────────────────
-#
-# AppException extends HTTPException, so FastAPI handles it automatically.
-# This handler only catches truly unexpected exceptions that slipped through
-# all service-layer try/except blocks.
-#
-# IMPORTANT: Do NOT re-handle AppException here — doing so would override the
-# correct status_code set in the service layer and always return 400 or 500.
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """
-    Catch-all for unhandled exceptions.
-    AppException / HTTPException are handled by FastAPI before reaching here.
+    Catch-all handler for truly unhandled exceptions.
+
+    AppException and HTTPException are normally handled by FastAPI before
+    reaching this point.
     """
-    logger.error("Unhandled exception on %s: %s", request.url.path, exc, exc_info=True)
+    logger.error(
+        "Unhandled exception on path=%s error=%s",
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
         content={
-            "detail" : "Internal Server Error",
-            "path"   : request.url.path,
+            "detail": "Internal Server Error",
+            "path": request.url.path,
         },
     )
-
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["Health"])
 async def root():
-    return {"status": "online", "message": "IoT TubeWell Backend is running"}
+    """
+    Health check endpoint.
+    """
+    return {
+        "status": "online",
+        "message": "IoT TubeWell Backend is running",
+    }

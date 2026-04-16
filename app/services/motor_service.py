@@ -1,76 +1,91 @@
-# app/services/motor_service.py
-#
-# Motor control service layer.
-# Handles start / stop lifecycle of motor logs.
-#
-# ── AppException Usage ────────────────────────────────────────────────────────
-#  Always called as AppException(status_code=int, detail=str).
-# ──────────────────────────────────────────────────────────────────────────────
-
 from datetime import datetime
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from app.repositories.motor_repo import MotorRepository
-from app.models.motor_log import MotorLog
-from app.core.logger import logger
 from app.core.exceptions import AppException
+from app.core.logger import logger
+from app.models.motor_log import MotorLog
+from app.repositories.motor_repo import MotorRepository
+from app.services.mqtt_service import MQTTService
 
 
 class MotorService:
     """
     Service layer for motor start/stop operations.
 
-    Responsibilities
-    ----------------
-    - Prevent duplicate start when motor is already running.
-    - Record start_time on start, end_time + duration_minutes on stop.
-    - Delegate all persistence to MotorRepository.
+    Responsibilities:
+    - Send MQTT command to the correct device using path parameter device_id.
+    - Prevent duplicate start for already running motor.
+    - Record motor start and stop times.
+    - Store operator_name for khata, billing, and usage calculations.
+    - Update status as ON/OFF.
     """
 
-    def __init__(self, db):
+    def __init__(self, db: Session):
         self.repo = MotorRepository(db)
+        self.mqtt_service = MQTTService()
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # START
-    # ─────────────────────────────────────────────────────────────────────────
-    def start_motor(self, device_id: str, trigger: str):
+    def start_motor(
+        self,
+        device_id: str,
+        trigger_type: str = "manual",
+        operator_name: str = "",
+    ) -> MotorLog:
         """
-        Start the motor for a device, or return the existing log if already running.
+        Start motor for a specific device and create a running log entry.
 
-        Parameters
-        ----------
-        device_id : str   ID of the device whose motor to start.
-        trigger   : str   How the motor was triggered (e.g. "manual", "schedule").
+        Args:
+            device_id: Device identifier from path parameter.
+            trigger_type: manual or schedule.
+            operator_name: Name entered from frontend for billing/khata use.
 
-        Returns
-        -------
-        MotorLog
-            Either the newly created log, or the existing running log if the
-            motor was already active (idempotent — no duplicate logs created).
+        Returns:
+            MotorLog: Newly created or existing running motor log.
 
-        Raises
-        ------
-        AppException(400)   Database error during insert.
+        Raises:
+            AppException: For validation, MQTT, DB, or unexpected errors.
         """
         try:
+            if not operator_name or not operator_name.strip():
+                raise AppException(status_code=400, detail="operator_name is required")
+
+            normalized_trigger = (trigger_type or "manual").strip().lower()
+            if normalized_trigger not in {"manual", "schedule"}:
+                raise AppException(status_code=400, detail="trigger_type must be 'manual' or 'schedule'")
+
             running = self.repo.get_running_motor(device_id)
             if running:
-                logger.info(
-                    "Motor already running: device_id=%s, log_id=%s, trigger=%s",
-                    device_id, running.id, trigger,
+                logger.warning(
+                    "Start requested but motor already running: device_id=%s, log_id=%s",
+                    device_id,
+                    running.id,
                 )
                 return running
 
-            log = MotorLog(
-                device_id    = device_id,
-                start_time   = datetime.utcnow(),
-                trigger_type = trigger,
+            # Publish MQTT ON command for this specific device
+            self.mqtt_service.publish_motor_command(
+                device_id=device_id,
+                command="ON",
+                trigger_type=normalized_trigger,
+                operator_name=operator_name.strip(),
             )
+
+            log = MotorLog(
+                device_id=device_id,
+                start_time=datetime.utcnow(),
+                trigger_type=normalized_trigger,
+                operator_name=operator_name.strip(),
+                status="ON",
+            )
+
             created = self.repo.create_log(log)
+
             logger.info(
-                "Motor started: device_id=%s, log_id=%s, trigger=%s",
-                device_id, created.id, trigger,
+                "Motor started successfully: device_id=%s, log_id=%s, operator_name=%s",
+                device_id,
+                created.id,
+                created.operator_name,
             )
             return created
 
@@ -79,62 +94,77 @@ class MotorService:
 
         except SQLAlchemyError as exc:
             logger.error(
-                "DB error starting motor: device_id=%s, trigger=%s: %s",
-                device_id, trigger, exc, exc_info=True,
+                "DB error while starting motor: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Database error: failed to start motor for device '{device_id}'",
+                detail=f"Database error while starting motor for device '{device_id}'",
             )
 
         except Exception as exc:
             logger.error(
-                "Unexpected error starting motor: device_id=%s: %s",
-                device_id, exc, exc_info=True,
+                "Unexpected error while starting motor: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while starting motor: {exc}",
+                detail="Unexpected error while starting motor",
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # STOP
-    # ─────────────────────────────────────────────────────────────────────────
-    def stop_motor(self, device_id: str):
+    def stop_motor(
+        self,
+        device_id: str,
+        operator_name: str | None = None,
+    ) -> MotorLog | None:
         """
-        Stop the running motor for a device and record duration.
+        Stop motor for a specific device and close running log entry.
 
-        Parameters
-        ----------
-        device_id : str   ID of the device whose motor to stop.
+        Args:
+            device_id: Device identifier from path parameter.
+            operator_name: Optional name from frontend. If provided, can update latest log name.
 
-        Returns
-        -------
-        MotorLog
-            The updated log with end_time and duration_minutes set.
-        None
-            If no motor was running for this device (no-op).
+        Returns:
+            MotorLog | None: Updated stopped log or None if no running log exists.
 
-        Raises
-        ------
-        AppException(400)   Database error during update.
+        Raises:
+            AppException: For MQTT, DB, or unexpected errors.
         """
         try:
             log = self.repo.get_running_motor(device_id)
             if not log:
-                logger.warning(
-                    "Stop called but no running motor: device_id=%s", device_id
-                )
+                logger.warning("Stop requested but no running motor found: device_id=%s", device_id)
                 return None
 
-            log.end_time         = datetime.utcnow()
-            duration             = log.end_time - log.start_time
-            log.duration_minutes = int(duration.total_seconds() / 60)
+            # Publish MQTT OFF command for this specific device
+            self.mqtt_service.publish_motor_command(
+                device_id=device_id,
+                command="OFF",
+                trigger_type=log.trigger_type,
+                operator_name=operator_name.strip() if operator_name else log.operator_name,
+            )
+
+            end_time = datetime.utcnow()
+            duration = end_time - log.start_time
+
+            log.end_time = end_time
+            log.duration_minutes = max(1, int(duration.total_seconds() / 60))
+            log.status = "OFF"
+
+            if operator_name and operator_name.strip():
+                log.operator_name = operator_name.strip()
 
             updated = self.repo.update_log(log)
+
             logger.info(
-                "Motor stopped: device_id=%s, log_id=%s, duration=%d min",
-                device_id, updated.id, updated.duration_minutes,
+                "Motor stopped successfully: device_id=%s, log_id=%s, duration_minutes=%s",
+                device_id,
+                updated.id,
+                updated.duration_minutes,
             )
             return updated
 
@@ -143,20 +173,24 @@ class MotorService:
 
         except SQLAlchemyError as exc:
             logger.error(
-                "DB error stopping motor: device_id=%s: %s",
-                device_id, exc, exc_info=True,
+                "DB error while stopping motor: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Database error: failed to stop motor for device '{device_id}'",
+                detail=f"Database error while stopping motor for device '{device_id}'",
             )
 
         except Exception as exc:
             logger.error(
-                "Unexpected error stopping motor: device_id=%s: %s",
-                device_id, exc, exc_info=True,
+                "Unexpected error while stopping motor: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while stopping motor: {exc}",
+                detail="Unexpected error while stopping motor",
             )

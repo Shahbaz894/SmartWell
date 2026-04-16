@@ -1,81 +1,14 @@
-
-# from pydantic import BaseModel
-# from typing import Optional
-
-
-# # -----------------------
-# # Base Schema (ESP32 Input)
-# # -----------------------
-# class MotorTelemetryBase(BaseModel):
-#     # Electrical data
-#     freq: float
-#     current: float
-#     voltage: float
-#     dcbus: float
-#     power: float
-
-#     # Performance
-#     reference_freq: float
-#     motor_speed: float
-#     power_percent: float
-#     torque_percent: float
-
-#     # Optional fields
-#     energy_in: Optional[float] = None
-#     fault: Optional[int] = None
-#     status_code: Optional[int] = None
-
-
-# # -----------------------
-# # Create Schema (POST)
-# # -----------------------
-# class MotorTelemetryCreate(MotorTelemetryBase):
-#     device_id: str   # e.g. SMSWELL1001
-
-
-# # -----------------------
-# # Response Schema (API → Flutter)
-# # -----------------------
-# class MotorTelemetryResponse(BaseModel):
-#     id: str
-#     device_id: str
-
-#     # Timestamp
-#     timestamp: int
-#     is_live: int  # 1 = live, 0 = offline/backfill
-
-#     # Electrical data
-#     freq: float
-#     current: float
-#     voltage: float
-#     dcbus: float
-#     power: float
-
-#     # Performance
-#     reference_freq: float
-#     motor_speed: float
-#     power_percent: float
-#     torque_percent: float
-
-#     # Optional
-#     energy_in: Optional[float]
-#     fault: Optional[int]
-#     status_code: Optional[int]
-
-#     class Config:
-#         from_attributes = True
-
-from pydantic import BaseModel
 from typing import Optional
 
+from pydantic import BaseModel, Field, field_validator
 
-# -----------------------
-# ESP32 INPUT
-# -----------------------
+
 class MotorTelemetryCreate(BaseModel):
-    device_id: str
+    """
+    Incoming telemetry payload from ESP32.
+    """
 
-    timestamp: int
+    timestamp: int = Field(..., description="Device timestamp in milliseconds or seconds")
 
     freq: float
     current: float
@@ -93,14 +26,63 @@ class MotorTelemetryCreate(BaseModel):
     power_percent: float
     torque_percent: float
 
-    is_live: int   # 1 = live, 0 = offline
+    is_live: int = Field(..., description="1 = live packet, 0 = offline EEPROM packet")
+
+    @field_validator("is_live")
+    @classmethod
+    def validate_is_live(cls, value: int) -> int:
+        if value not in (0, 1):
+            raise ValueError("is_live must be 0 or 1")
+        return value
+
+    @field_validator(
+        "freq",
+        "current",
+        "voltage",
+        "dcbus",
+        "power",
+        "reference_freq",
+        "motor_speed",
+        "power_percent",
+        "torque_percent",
+        mode="before",
+    )
+    @classmethod
+    def validate_non_negative_numeric_fields(cls, value):
+        if value is None:
+            return value
+        if float(value) < 0:
+            raise ValueError("Telemetry numeric values must be non-negative")
+        return value
 
 
-# -----------------------
-# RESPONSE
-# -----------------------
-class MotorTelemetryResponse(MotorTelemetryCreate):
+class MotorTelemetryResponse(BaseModel):
+    """
+    Telemetry response schema.
+    """
+
     id: str
+    device_id: str
+
+    timestamp: int
+
+    freq: float
+    current: float
+    voltage: float
+    dcbus: float
+    power: float
+    energy_in: Optional[float]
+
+    fault: Optional[int]
+    fault_code: Optional[int]
+    status_code: Optional[int]
+
+    reference_freq: float
+    motor_speed: float
+    power_percent: float
+    torque_percent: float
+
+    is_live: int
 
     class Config:
         from_attributes = True

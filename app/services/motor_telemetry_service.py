@@ -1,198 +1,204 @@
-# app/services/motor_telemetry_service.py
-#
-# Motor telemetry service layer.
-# Handles creation, retrieval, and deletion of telemetry records.
-#
-# ── AppException Usage ────────────────────────────────────────────────────────
-#  Always called as AppException(status_code=int, detail=str).
-# ──────────────────────────────────────────────────────────────────────────────
-
 from uuid import UUID
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.exceptions import AppException, NotFoundException
+from app.core.logger import logger
+from app.models.motor_parameter import MotorTelemetry
 from app.repositories.motor_telemetry_repo import MotorTelemetryRepository
 from app.schemas.motor_telemetry_schema import MotorTelemetryCreate
-from app.core.logger import logger
-from app.core.exceptions import AppException, NotFoundException
 
 
 class MotorTelemetryService:
     """
-    Service layer for MotorTelemetry operations.
+    Service layer for motor telemetry operations.
 
-    Responsibilities
-    ----------------
-    - Create telemetry records from device payloads.
-    - Retrieve all telemetry for a given device.
-    - Delete individual telemetry records by ID.
-    - Delegate all persistence to MotorTelemetryRepository.
+    Responsibilities:
+    - Validate telemetry packets coming from ESP32
+    - Persist live and offline telemetry packets
+    - Fetch telemetry for dashboard/API usage
+    - Fetch latest live telemetry without delay
+    - Delete telemetry records when required
     """
 
     def __init__(self):
         self.repo = MotorTelemetryRepository()
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # CREATE
-    # ─────────────────────────────────────────────────────────────────────────
-    def create_telemetry(self, db: Session, data: MotorTelemetryCreate):
+    def create_telemetry(
+        self,
+        db: Session,
+        device_id: str,
+        data: MotorTelemetryCreate,
+    ) -> MotorTelemetry:
         """
-        Persist a new telemetry record.
+        Create and store telemetry for a specific device.
 
-        Parameters
-        ----------
-        db   : Session               Active SQLAlchemy session.
-        data : MotorTelemetryCreate  Validated telemetry payload.
+        Args:
+            db: Active SQLAlchemy session
+            device_id: Device ID from path or MQTT topic
+            data: Validated telemetry payload
 
-        Returns
-        -------
-        MotorTelemetry
-            The newly created and committed record.
+        Returns:
+            MotorTelemetry: Created telemetry row
 
-        Raises
-        ------
-        AppException(400)   Database error during insert.
+        Raises:
+            AppException: On validation or database failure
         """
         try:
-            telemetry = self.repo.create(db, data)
-            logger.info(
-                "Telemetry created: id=%s, device_id=%s",
-                telemetry.id, telemetry.device_id,
+            telemetry = MotorTelemetry(
+                device_id=device_id,
+                timestamp=data.timestamp,
+                freq=data.freq,
+                current=data.current,
+                voltage=data.voltage,
+                dcbus=data.dcbus,
+                power=data.power,
+                energy_in=data.energy_in,
+                fault=data.fault,
+                fault_code=data.fault_code,
+                status_code=data.status_code,
+                reference_freq=data.reference_freq,
+                motor_speed=data.motor_speed,
+                power_percent=data.power_percent,
+                torque_percent=data.torque_percent,
+                is_live=data.is_live,
             )
-            return telemetry
+
+            created = self.repo.create(db, telemetry)
+            db.commit()
+
+            logger.info(
+                "Telemetry created successfully: device_id=%s, telemetry_id=%s, is_live=%s",
+                device_id,
+                created.id,
+                created.is_live,
+            )
+            return created
 
         except AppException:
+            db.rollback()
             raise
 
         except SQLAlchemyError as exc:
+            db.rollback()
             logger.error(
-                "DB error creating telemetry for device_id=%s: %s",
-                data.device_id, exc, exc_info=True,
-            )
-            raise AppException(
-                status_code=400,
-                detail=f"Database error: failed to create telemetry for device '{data.device_id}'",
-            )
-
-        except Exception as exc:
-            logger.error(
-                "Unexpected error creating telemetry: device_id=%s: %s",
-                data.device_id, exc, exc_info=True,
+                "DB error while creating telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while creating telemetry: {exc}",
+                detail=f"Database error while creating telemetry for device '{device_id}'",
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # GET BY DEVICE
-    # ─────────────────────────────────────────────────────────────────────────
+        except Exception as exc:
+            db.rollback()
+            logger.error(
+                "Unexpected error while creating telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail="Unexpected error while creating telemetry",
+            )
+
     def get_device_telemetry(self, db: Session, device_id: str):
         """
-        Return all telemetry records for a device, newest first.
-
-        Parameters
-        ----------
-        db        : Session   Active SQLAlchemy session.
-        device_id : str       Device primary key.
-
-        Returns
-        -------
-        list[MotorTelemetry]
-
-        Raises
-        ------
-        AppException(400)   Database error during query.
+        Return all telemetry for a device, newest first.
         """
         try:
             records = self.repo.get_by_device(db, device_id)
+
             logger.info(
-                "Fetched %d telemetry records for device_id=%s",
-                len(records), device_id,
+                "Telemetry fetched successfully: device_id=%s, count=%s",
+                device_id,
+                len(records),
             )
             return records
 
         except AppException:
             raise
 
-        except SQLAlchemyError as exc:
-            logger.error(
-                "DB error fetching telemetry for device_id=%s: %s",
-                device_id, exc, exc_info=True,
-            )
-            raise AppException(
-                status_code=400,
-                detail=f"Database error: failed to fetch telemetry for device '{device_id}'",
-            )
-
         except Exception as exc:
             logger.error(
-                "Unexpected error fetching telemetry: device_id=%s: %s",
-                device_id, exc, exc_info=True,
+                "Unexpected error while fetching telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while fetching telemetry: {exc}",
+                detail="Unexpected error while fetching telemetry",
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # DELETE
-    # ─────────────────────────────────────────────────────────────────────────
-    def delete_telemetry(self, db: Session, telemetry_id: UUID):
+    def get_latest_live(self, db: Session, device_id: str):
         """
-        Permanently delete a telemetry record by ID.
-
-        Parameters
-        ----------
-        db           : Session   Active SQLAlchemy session.
-        telemetry_id : UUID      Primary key of the record to delete.
-
-        Returns
-        -------
-        MotorTelemetry
-            The deleted record.
-
-        Raises
-        ------
-        NotFoundException(404)   Record not found.
-        AppException(400)        Database error during delete.
+        Return latest live telemetry packet for a device.
         """
         try:
-            deleted = self.repo.delete(db, telemetry_id)
-            if not deleted:
-                logger.warning(
-                    "Telemetry not found for deletion: id=%s", telemetry_id
+            latest = self.repo.get_latest_live(db, device_id)
+
+            if latest:
+                logger.info(
+                    "Latest live telemetry fetched: device_id=%s, telemetry_id=%s",
+                    device_id,
+                    latest.id,
                 )
-                raise NotFoundException(
-                    detail=f"Telemetry '{telemetry_id}' not found",
+            else:
+                logger.warning(
+                    "No live telemetry found: device_id=%s",
+                    device_id,
                 )
 
+            return latest
+
+        except AppException:
+            raise
+
+        except Exception as exc:
+            logger.error(
+                "Unexpected error while fetching latest live telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail="Unexpected error while fetching latest live telemetry",
+            )
+
+    def delete_telemetry(self, db: Session, telemetry_id: UUID):
+        """
+        Delete a telemetry record by ID.
+        """
+        try:
+            deleted = self.repo.delete(db, str(telemetry_id))
+            db.commit()
+
             logger.info(
-                "Telemetry deleted: id=%s, device_id=%s",
-                deleted.id, deleted.device_id,
+                "Telemetry deleted successfully: telemetry_id=%s, device_id=%s",
+                deleted.id,
+                deleted.device_id,
             )
             return deleted
 
         except (AppException, NotFoundException):
+            db.rollback()
             raise
 
-        except SQLAlchemyError as exc:
-            logger.error(
-                "DB error deleting telemetry id=%s: %s",
-                telemetry_id, exc, exc_info=True,
-            )
-            raise AppException(
-                status_code=400,
-                detail=f"Database error: failed to delete telemetry '{telemetry_id}'",
-            )
-
         except Exception as exc:
+            db.rollback()
             logger.error(
-                "Unexpected error deleting telemetry id=%s: %s",
-                telemetry_id, exc, exc_info=True,
+                "Unexpected error while deleting telemetry: telemetry_id=%s, error=%s",
+                telemetry_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while deleting telemetry: {exc}",
+                detail="Unexpected error while deleting telemetry",
             )

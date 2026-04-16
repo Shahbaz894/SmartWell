@@ -1,159 +1,133 @@
-# from datetime import datetime
-
-# from sqlalchemy.orm import Session
-# from sqlalchemy.exc import SQLAlchemyError
-# from uuid import UUID
-
-# from app import db
-# from app.models.motor_parameter import MotorTelemetry
-# from app.schemas.motor_telemetry_schema import MotorTelemetryCreate
-# from app.core.logger import logger
-# from app.core.exceptions import AppException, NotFoundException
-
-
-# class MotorTelemetryRepository:
-
-#     def create(self, db: Session, data: MotorTelemetryCreate):
-#         try:
-#             telemetry = MotorTelemetry(
-#                 device_id=data.device_id,
-#                 freq=data.output_frequency,
-#                 reference_freq=data.reference_frequency,
-#                 dcbus=data.dc_bus_voltage,
-#                 voltage=data.output_voltage,
-#                 current=data.output_current,
-#                 motor_speed=data.motor_speed,
-#                 power=data.real_power,
-#                 power_percent=data.power_load,
-#                 torque_percent=data.torque_load,
-#                 timestamp=int(datetime.now().timestamp() * 1000),
-                
-#                 is_live=1
-#             )
-#             db.add(telemetry)
-#             db.commit()
-#             db.refresh(telemetry)
-#             logger.info(
-#                 "Motor telemetry created: id=%s, device_id=%s",
-#                 telemetry.id,
-#                 telemetry.device_id
-#             )
-#             return telemetry
-#         except SQLAlchemyError as e:
-#             db.rollback()
-#             logger.error(
-#                 "Failed to create motor telemetry for device %s: %s",
-#                 data.device_id,
-#                 str(e)
-#             )
-#             raise AppException(f"Database error: {str(e)}")
-
-#     def get_by_device(self, db: Session, device_id: str):
-#         try:
-#             telemetry_list = (
-#                 db.query(MotorTelemetry)
-#                 .filter(MotorTelemetry.device_id == device_id)
-#                 .order_by(MotorTelemetry.id.desc())
-#                 .all()
-#             )
-#             logger.info(
-#                 "Fetched %d telemetry records for device_id=%s",
-#                 len(telemetry_list),
-#                 device_id
-#             )
-#             return telemetry_list
-#         except SQLAlchemyError as e:
-#             logger.error("SQL Error for device %s: %s", device_id, str(e))
-#             raise AppException(f"Database error: {str(e)}")
-#         except Exception as e:
-#             logger.error("Unexpected error for device %s: %s", device_id, str(e))
-#         raise AppException(f"Error: {str(e)}")
-    
-#     def delete(self, db: Session, telemetry_id: UUID):
-#         try:
-#             telemetry = db.query(MotorTelemetry).filter(MotorTelemetry.id == telemetry_id).first()
-#             if telemetry:
-#                 db.delete(telemetry)
-#                 db.commit()
-#                 logger.info(
-#                     "Deleted telemetry record: id=%s, device_id=%s",
-#                     telemetry.id,
-#                     telemetry.device_id
-#                 )
-#             else:
-#                 logger.warning("Telemetry record not found: id=%s", telemetry_id)
-#                 raise NotFoundException(f"Telemetry record {telemetry_id} not found")
-#             return telemetry
-#         except SQLAlchemyError as e:
-#             db.rollback()
-#             logger.error("Failed to delete telemetry id=%s: %s", telemetry_id, str(e))
-#             raise AppException(f"Database error: failed to delete telemetry {telemetry_id}")
+from typing import Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+
 from app.models.motor_parameter import MotorTelemetry
-from app.schemas.motor_telemetry_schema import MotorTelemetryCreate
-from app.core.logger import logger
 from app.core.exceptions import AppException, NotFoundException
+from app.core.logger import logger
 
 
 class MotorTelemetryRepository:
+    """
+    Repository layer for motor telemetry database operations.
+    """
 
-    # -----------------------
-    # CREATE
-    # -----------------------
-    def create(self, db: Session, data: MotorTelemetryCreate):
+    def create(self, db: Session, telemetry: MotorTelemetry) -> MotorTelemetry:
+        """
+        Persist a telemetry record.
+        """
         try:
-            telemetry = MotorTelemetry(**data.model_dump())
-
             db.add(telemetry)
-            db.commit()
+            db.flush()
             db.refresh(telemetry)
 
             logger.info(
-                "Telemetry created: id=%s device=%s",
+                "Telemetry persisted: id=%s, device_id=%s, is_live=%s",
                 telemetry.id,
-                telemetry.device_id
+                telemetry.device_id,
+                telemetry.is_live,
             )
-
             return telemetry
 
-        except SQLAlchemyError as e:
-            db.rollback()
-            logger.error("Create failed: %s", str(e))
-            raise AppException(f"DB Error: {str(e)}")
+        except SQLAlchemyError as exc:
+            logger.error(
+                "DB error while persisting telemetry: device_id=%s, error=%s",
+                telemetry.device_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail=f"Database error while creating telemetry for device '{telemetry.device_id}'",
+            )
 
-    # -----------------------
-    # GET BY DEVICE
-    # -----------------------
     def get_by_device(self, db: Session, device_id: str):
+        """
+        Return all telemetry records for a device, newest first.
+        """
         try:
             return (
                 db.query(MotorTelemetry)
                 .filter(MotorTelemetry.device_id == device_id)
-                .order_by(MotorTelemetry.timestamp.desc())  # ✅ FIXED
+                .order_by(MotorTelemetry.timestamp.desc())
                 .all()
             )
-        except SQLAlchemyError as e:
-            raise AppException(f"DB Error: {str(e)}")
 
-    # -----------------------
-    # DELETE
-    # -----------------------
-    def delete(self, db: Session, telemetry_id: str):
+        except SQLAlchemyError as exc:
+            logger.error(
+                "DB error while fetching telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail=f"Database error while fetching telemetry for device '{device_id}'",
+            )
+
+    def get_latest_live(self, db: Session, device_id: str) -> Optional[MotorTelemetry]:
+        """
+        Return latest live telemetry record for a device.
+        """
         try:
-            telemetry = db.query(MotorTelemetry).filter(
-                MotorTelemetry.id == telemetry_id
-            ).first()
+            return (
+                db.query(MotorTelemetry)
+                .filter(
+                    MotorTelemetry.device_id == device_id,
+                    MotorTelemetry.is_live == 1,
+                )
+                .order_by(MotorTelemetry.timestamp.desc())
+                .first()
+            )
+
+        except SQLAlchemyError as exc:
+            logger.error(
+                "DB error while fetching latest live telemetry: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail=f"Database error while fetching latest live telemetry for device '{device_id}'",
+            )
+
+    def delete(self, db: Session, telemetry_id: str) -> MotorTelemetry:
+        """
+        Delete telemetry by ID.
+        """
+        try:
+            telemetry = (
+                db.query(MotorTelemetry)
+                .filter(MotorTelemetry.id == telemetry_id)
+                .first()
+            )
 
             if not telemetry:
-                raise NotFoundException("Telemetry not found")
+                raise NotFoundException(detail="Telemetry not found")
 
             db.delete(telemetry)
-            db.commit()
+            db.flush()
 
+            logger.info(
+                "Telemetry deleted from session: id=%s, device_id=%s",
+                telemetry.id,
+                telemetry.device_id,
+            )
             return telemetry
 
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise AppException(f"DB Error: {str(e)}")
+        except NotFoundException:
+            raise
+
+        except SQLAlchemyError as exc:
+            logger.error(
+                "DB error while deleting telemetry: telemetry_id=%s, error=%s",
+                telemetry_id,
+                exc,
+                exc_info=True,
+            )
+            raise AppException(
+                status_code=500,
+                detail=f"Database error while deleting telemetry '{telemetry_id}'",
+            )

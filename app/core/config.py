@@ -20,6 +20,29 @@ class Settings(BaseSettings):
     # OPTIONAL DEFAULTS (SAFE)
     # ─────────────────────────────
     PROJECT_NAME: str = "SmartWell API"
+     # ─────────────────────────────
+    
+
+    # ─────────────────────────────
+    # MQTT
+    # ─────────────────────────────
+    MQTT_BROKER_HOST: str
+    MQTT_BROKER_PORT: int = 1883
+    MQTT_USERNAME: str = ""
+    MQTT_PASSWORD: str = ""
+    MQTT_KEEPALIVE: int = 60
+    MQTT_QOS: int = 1
+    MQTT_TOPIC_PREFIX: str = "smartwell/devices"
+    
+
+    MQTT_COMMAND_TOPIC_PREFIX: str = "smartwell/devices"
+    MQTT_TELEMETRY_TOPIC_PREFIX: str = "smartwell/devices"
+    MQTT_TELEMETRY_TOPIC_SUFFIX: str = "telemetry"
+
+    # ─────────────────────────────
+    # OPTIONAL HTTP
+    # ─────────────────────────────
+    DEVICE_HTTP_URL: str = ""
 
     # ─────────────────────────────
     # FIX POSTGRES COMPATIBILITY

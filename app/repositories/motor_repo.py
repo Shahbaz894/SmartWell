@@ -1,153 +1,103 @@
-# # app/repositories/motor_repo.py
-
-# from sqlalchemy.orm import Session
-# from sqlalchemy.exc import SQLAlchemyError
-# from app.models.motor_log import MotorLog
-# from app.core.logger import logger
-# from app.core.exceptions import AppException, NotFoundException
-
-
-# class MotorRepository:
-
-#     def __init__(self, db: Session):
-#         self.db = db
-
-#     def create_log(self, log: MotorLog):
-#         try:
-#             self.db.add(log)
-#             self.db.commit()
-#             self.db.refresh(log)
-#             logger.info(
-#                 "Motor log created: id=%s, device_id=%s, trigger_type=%s",
-#                 log.id,
-#                 log.device_id,
-#                 log.trigger_type
-#             )
-#             return log
-#         except SQLAlchemyError as e:
-#             self.db.rollback()
-#             logger.error(
-#                 "Failed to create motor log for device %s: %s",
-#                 log.device_id,
-#                 str(e)
-#             )
-#             raise AppException(status_code=500, detail=f"Database error: failed to create motor log for device {log.device_id}")
-            
-
-#     def get_running_motor(self, device_id: str):
-#         try:
-#             running = (
-#                 self.db.query(MotorLog)
-#                 .filter(MotorLog.device_id == device_id, MotorLog.end_time == None)
-#                 .first()
-#             )
-#             if running:
-#                 logger.info("Found running motor log: id=%s, device_id=%s", running.id, device_id)
-#             else:
-#                 logger.info("No running motor log found for device_id=%s", device_id)
-#             return running
-#         except SQLAlchemyError as e:
-#             logger.error("Failed to fetch running motor log for device %s: %s", device_id, str(e))
-#             raise AppException(status_code=500, detail=f"Database error: failed to fetch running motor log for device {device_id}")
-
-#     def update_log(self, log: MotorLog):
-#         try:
-#             self.db.commit()
-#             self.db.refresh(log)
-#             logger.info("Motor log updated: id=%s, device_id=%s", log.id, log.device_id)
-#             return log
-#         except SQLAlchemyError as e:
-#             self.db.rollback()
-#             logger.error("Failed to update motor log id=%s for device %s: %s", log.id, log.device_id, str(e))
-#             raise AppException(status_code=500, detail=f"Database error: failed to update motor log id {log.id}")
-
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+
 from app.models.motor_log import MotorLog
 from app.core.logger import logger
 from app.core.exceptions import AppException
 
 
 class MotorRepository:
+    """
+    Repository layer for motor log database operations.
+    """
 
     def __init__(self, db: Session):
         self.db = db
 
-    # ─────────────────────────────────────────────────────────────
-    # CREATE
-    # ─────────────────────────────────────────────────────────────
-    def create_log(self, log: MotorLog):
+    def create_log(self, log: MotorLog) -> MotorLog:
+        """
+        Persist a new motor log.
+        """
         try:
             self.db.add(log)
             self.db.commit()
             self.db.refresh(log)
 
             logger.info(
-                "Motor log created: id=%s, device_id=%s, trigger_type=%s",
+                "Motor log created: id=%s, device_id=%s, trigger_type=%s, status=%s",
                 log.id,
                 log.device_id,
-                log.trigger_type
+                log.trigger_type,
+                log.status,
             )
             return log
 
-        except SQLAlchemyError:
+        except SQLAlchemyError as exc:
             self.db.rollback()
             logger.error(
-                "DB ERROR creating motor log: device=%s",
+                "DB error creating motor log: device_id=%s, error=%s",
                 log.device_id,
-                exc_info=True   # 🔥 IMPORTANT
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Database error: failed to create motor log for device {log.device_id}"
+                detail=f"Database error while creating motor log for device '{log.device_id}'",
             )
 
-    # ─────────────────────────────────────────────────────────────
-    # GET RUNNING MOTOR
-    # ─────────────────────────────────────────────────────────────
-   
-    def get_running_motor(self, device_id: str):
+    def get_running_motor(self, device_id: str) -> MotorLog | None:
+        """
+        Fetch currently running motor log for a device.
+        """
         try:
-            running = (
+            return (
                 self.db.query(MotorLog)
                 .filter(
                     MotorLog.device_id == device_id,
-                    MotorLog.end_time.is_(None)
+                    MotorLog.end_time.is_(None),
+                    MotorLog.status == "ON",
                 )
                 .first()
             )
-            return running
 
-        except Exception as e:  # ← catch ALL exceptions temporarily
-            logger.error("REAL ERROR: %s", repr(e), exc_info=True)  # ← repr gives full details
+        except SQLAlchemyError as exc:
+            logger.error(
+                "DB error fetching running motor: device_id=%s, error=%s",
+                device_id,
+                exc,
+                exc_info=True,
+            )
             raise AppException(
                 status_code=500,
-                detail=repr(e)  # ← return real error in response temporarily
+                detail=f"Database error while fetching running motor for device '{device_id}'",
             )
 
-    # ─────────────────────────────────────────────────────────────
-    # UPDATE
-    # ─────────────────────────────────────────────────────────────
-    def update_log(self, log: MotorLog):
+    def update_log(self, log: MotorLog) -> MotorLog:
+        """
+        Commit changes to an existing motor log.
+        """
         try:
             self.db.commit()
             self.db.refresh(log)
 
             logger.info(
-                "Motor log updated: id=%s, device_id=%s",
+                "Motor log updated: id=%s, device_id=%s, status=%s",
                 log.id,
-                log.device_id
+                log.device_id,
+                log.status,
             )
             return log
 
-        except SQLAlchemyError:
+        except SQLAlchemyError as exc:
             self.db.rollback()
             logger.error(
-                "DB ERROR updating motor log: id=%s",
+                "DB error updating motor log: id=%s, device_id=%s, error=%s",
                 log.id,
-                exc_info=True
+                log.device_id,
+                exc,
+                exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Database error: failed to update motor log id {log.id}"
+                detail=f"Database error while updating motor log '{log.id}'",
             )

@@ -6,12 +6,12 @@ from typing import Optional
 
 
 class MotorStartRequest(BaseModel):
-    device_id: str
     trigger_type: str  # manual or schedule
+    customer_name: Optional[str] = None
 
 
 class MotorStopRequest(BaseModel):
-    device_id: str
+    customer_name: Optional[str] = None
 
 
 class MotorLogResponse(BaseModel):
@@ -21,6 +21,8 @@ class MotorLogResponse(BaseModel):
     end_time: Optional[datetime]
     duration_minutes: Optional[int]
     trigger_type: str
+    customer_name: Optional[str] = None
+    status: Optional[str] = None
 
     class Config:
         from_attributes = True
