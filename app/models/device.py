@@ -20,3 +20,8 @@ class Device(Base):
  motor_logs = relationship("MotorLog", back_populates="device", cascade="all, delete")
  telemetry = relationship("MotorTelemetry", back_populates="device", cascade="all, delete")
  schedules = relationship("Schedule", back_populates="device", cascade="all, delete")
+ vfd_command_logs = relationship(
+    "VFDCommandLog",
+    back_populates="device",
+    cascade="all, delete-orphan",
+)

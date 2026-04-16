@@ -10,12 +10,7 @@ from app.core.logger import logger
 
 class MQTTCommandService:
     """
-    MQTT publisher service for device control commands.
-
-    Responsibilities:
-    - Publish motor ON/OFF commands
-    - Publish VFD reset command
-    - Publish VFD reference frequency command
+    MQTT publisher service for motor and VFD control commands.
     """
 
     def __init__(self):
@@ -38,9 +33,6 @@ class MQTTCommandService:
     def _publish(self, topic: str, payload: dict) -> None:
         """
         Publish JSON payload to MQTT broker.
-
-        Raises:
-            AppException: If publish fails.
         """
         client = mqtt.Client(client_id="smartwell-command-publisher", clean_session=True)
 
@@ -60,7 +52,7 @@ class MQTTCommandService:
 
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 logger.error(
-                    "MQTT command publish failed: topic=%s, rc=%s",
+                    "MQTT publish failed: topic=%s, rc=%s",
                     topic,
                     result.rc,
                 )
@@ -76,7 +68,7 @@ class MQTTCommandService:
 
         except Exception as exc:
             logger.error(
-                "Unexpected MQTT command publish error: topic=%s, error=%s",
+                "Unexpected MQTT publish error: topic=%s, error=%s",
                 topic,
                 exc,
                 exc_info=True,
@@ -92,39 +84,9 @@ class MQTTCommandService:
             except Exception:
                 pass
 
-    def publish_motor_command(
-        self,
-        device_id: str,
-        command: str,
-        trigger_type: str,
-        customer_name: str | None = None,
-    ) -> None:
-        """
-        Publish motor ON or OFF command.
-        """
-        normalized_command = command.strip().upper()
-        if normalized_command not in {"ON", "OFF"}:
-            raise AppException(status_code=400, detail="Invalid motor command")
-
-        payload = {
-            "device_id": device_id,
-            "command": normalized_command,
-            "trigger_type": trigger_type,
-            "customer_name": customer_name,
-        }
-
-        with self._lock:
-            self._publish(self._command_topic(device_id), payload)
-
-        logger.info(
-            "Motor MQTT command published: device_id=%s, command=%s",
-            device_id,
-            normalized_command,
-        )
-
     def publish_vfd_reset_command(self, device_id: str) -> None:
         """
-        Publish VFD reset command for a specific device.
+        Publish VFD reset command.
         """
         payload = {
             "device_id": device_id,
@@ -135,3 +97,26 @@ class MQTTCommandService:
             self._publish(self._command_topic(device_id), payload)
 
         logger.info("VFD reset command published: device_id=%s", device_id)
+
+    def publish_reference_frequency_command(
+        self,
+        device_id: str,
+        reference_frequency: float,
+    ) -> None:
+        """
+        Publish VFD reference frequency command.
+        """
+        payload = {
+            "device_id": device_id,
+            "command": "SET_REFERENCE_FREQUENCY",
+            "reference_frequency": reference_frequency,
+        }
+
+        with self._lock:
+            self._publish(self._command_topic(device_id), payload)
+
+        logger.info(
+            "VFD reference frequency command published: device_id=%s, reference_frequency=%s",
+            device_id,
+            reference_frequency,
+        )
