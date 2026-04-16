@@ -15,9 +15,9 @@ class MotorTelemetryService:
     Service layer for motor telemetry operations.
 
     Responsibilities:
-    - Validate telemetry packets coming from ESP32
+    - Validate telemetry packets coming from ESP32 over HTTP
     - Persist live and offline telemetry packets
-    - Fetch telemetry for dashboard/API usage
+    - Fetch telemetry for dashboard and API usage
     - Fetch latest live telemetry without delay
     - Delete telemetry records when required
     """
@@ -36,7 +36,7 @@ class MotorTelemetryService:
 
         Args:
             db: Active SQLAlchemy session
-            device_id: Device ID from path or MQTT topic
+            device_id: Device ID from HTTP path parameter
             data: Validated telemetry payload
 
         Returns:

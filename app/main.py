@@ -2,8 +2,7 @@
 #
 # FastAPI application entry point.
 # Handles startup and shutdown lifecycle, router registration,
-# database initialization, scheduler startup, MQTT consumer startup,
-# and global exception handling.
+# database initialization, scheduler startup, and global exception handling.
 #
 # ── Router Prefixes ───────────────────────────────────────────────────────────
 #  Each router already declares its own prefix internally.
@@ -13,8 +12,9 @@
 #  device_routes           → prefix="/devices"
 #  motor_routes            → prefix="/motor"
 #  motor_telemetry_routes  → prefix="/telemetry"
-#  schedule_routes         → prefix="/schedules"
+#  schedule_routes         → prefix="/schedule"
 #  khata_routes            → prefix="/khata"
+#  vfd_control_routes      → prefix="/vfd"
 # ──────────────────────────────────────────────────────────────────────────────
 
 import asyncio
@@ -23,8 +23,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
-from app.core.scheduler import start_scheduler, stop_scheduler
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 import app.db.base_class
 from app.api import (
@@ -34,14 +33,13 @@ from app.api import (
     motor_telemetry_routes,
     schedule_routes,
     khata_routes,
+    vfd_control_routes,
 )
 from app.core.config import settings
-from app.core.exceptions import AppException
 from app.core.logger import logger
-from app.core.scheduler import start_scheduler
 from app.db.base import Base
 from app.db.session import engine
-from app.services.mqtt_telemetry_consumer_service import MQTTTelemetryConsumerService
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -54,10 +52,9 @@ async def lifespan(app: FastAPI):
     - check database connectivity with retries
     - create tables if needed
     - start scheduler
-    - start MQTT telemetry consumer
 
     Shutdown flow:
-    - stop MQTT telemetry consumer
+    - stop scheduler
     - log graceful shutdown
     """
     db_url = settings.DATABASE_URL
@@ -66,8 +63,6 @@ async def lifespan(app: FastAPI):
     retries = 10
     retry_delay_seconds = 3
     connected = False
-
-    mqtt_telemetry_consumer = MQTTTelemetryConsumerService()
 
     logger.info("Starting IoT TubeWell API")
     logger.info("Checking database host: %s", masked_host)
@@ -120,28 +115,6 @@ async def lifespan(app: FastAPI):
             exc_info=True,
         )
         raise RuntimeError("Failed to start scheduler") from exc
-    
-    try:
-        stop_scheduler()
-        logger.info("Scheduler stopped successfully")
-    except Exception as exc:
-        logger.error(
-            "Failed to stop scheduler cleanly: %s",
-            exc,
-            exc_info=True,
-        )
-
-    try:
-        mqtt_telemetry_consumer.start()
-        app.state.mqtt_telemetry_consumer = mqtt_telemetry_consumer
-        logger.info("MQTT telemetry consumer started successfully")
-    except Exception as exc:
-        logger.critical(
-            "FATAL: Failed to start MQTT telemetry consumer: %s",
-            exc,
-            exc_info=True,
-        )
-        raise RuntimeError("Failed to start MQTT telemetry consumer") from exc
 
     try:
         yield
@@ -149,22 +122,20 @@ async def lifespan(app: FastAPI):
     finally:
         logger.info("Shutting down IoT TubeWell API")
 
-        consumer = getattr(app.state, "mqtt_telemetry_consumer", None)
-        if consumer:
-            try:
-                consumer.stop()
-                logger.info("MQTT telemetry consumer stopped successfully")
-            except Exception as exc:
-                logger.error(
-                    "Failed to stop MQTT telemetry consumer cleanly: %s",
-                    exc,
-                    exc_info=True,
-                )
+        try:
+            stop_scheduler()
+            logger.info("Scheduler stopped successfully")
+        except Exception as exc:
+            logger.error(
+                "Failed to stop scheduler cleanly: %s",
+                exc,
+                exc_info=True,
+            )
 
 
 app = FastAPI(
     title="IoT TubeWell API",
-    description="Backend for ESP32, VFD, MQTT, and Flutter integration",
+    description="Backend for ESP32, VFD, HTTP, and Flutter integration",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -177,6 +148,7 @@ app.include_router(motor_routes.router)
 app.include_router(motor_telemetry_routes.router)
 app.include_router(schedule_routes.router)
 app.include_router(khata_routes.router)
+app.include_router(vfd_control_routes.router)
 
 # ── Global exception handler ──────────────────────────────────────────────────
 

@@ -14,11 +14,19 @@ router = APIRouter(prefix="/schedule", tags=["Schedule"])
 def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db)):
     """
     Create or update schedule for a device.
+
+    Args:
+        data: Schedule payload from client
+        db: Active database session
+
+    Returns:
+        ScheduleResponse: Created or updated schedule
     """
     service = ScheduleService(db)
 
     try:
         schedule = service.create_schedule(data.device_id, data)
+
         logger.info(
             "Schedule API create or update success: device_id=%s, schedule_id=%s",
             data.device_id,
@@ -46,11 +54,25 @@ def create_schedule(data: ScheduleCreate, db: Session = Depends(get_db)):
 def get_schedule(device_id: str, db: Session = Depends(get_db)):
     """
     Get schedule for a device.
+
+    Args:
+        device_id: Device identifier
+        db: Active database session
+
+    Returns:
+        ScheduleResponse: Schedule for the device
     """
     service = ScheduleService(db)
 
     try:
-        return service.get_schedule(device_id)
+        schedule = service.get_schedule(device_id)
+
+        logger.info(
+            "Schedule API get success: device_id=%s, schedule_id=%s",
+            device_id,
+            schedule.id,
+        )
+        return schedule
 
     except AppException:
         raise
@@ -72,11 +94,19 @@ def get_schedule(device_id: str, db: Session = Depends(get_db)):
 def delete_schedule(device_id: str, db: Session = Depends(get_db)):
     """
     Delete schedule for a device.
+
+    Args:
+        device_id: Device identifier
+        db: Active database session
+
+    Returns:
+        dict: Success message
     """
     service = ScheduleService(db)
 
     try:
         service.delete_schedule(device_id)
+
         logger.info("Schedule API delete success: device_id=%s", device_id)
         return {"message": "Deleted"}
 

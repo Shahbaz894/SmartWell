@@ -22,6 +22,14 @@ def reset_vfd(
 ):
     """
     Reset VFD to default settings for a specific device.
+
+    Args:
+        device_id: Target device identifier
+        payload: Reset confirmation payload
+        db: Active database session
+
+    Returns:
+        VFDCommandResponse: Command response payload
     """
     service = VFDControlService(db)
 
@@ -31,7 +39,10 @@ def reset_vfd(
             confirm=payload.confirm,
         )
 
-        logger.info("VFD reset API success: device_id=%s", device_id)
+        logger.info(
+            "VFD reset API success: device_id=%s",
+            device_id,
+        )
         return response
 
     except AppException:
@@ -58,6 +69,14 @@ def set_reference_frequency(
 ):
     """
     Set VFD reference frequency for a specific device.
+
+    Args:
+        device_id: Target device identifier
+        payload: Reference frequency payload
+        db: Active database session
+
+    Returns:
+        VFDCommandResponse: Command response payload
     """
     service = VFDControlService(db)
 

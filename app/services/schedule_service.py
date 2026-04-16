@@ -3,6 +3,7 @@ from datetime import datetime, time
 from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException, NotFoundException
 from app.core.logger import logger
@@ -10,7 +11,6 @@ from app.models.schedule import Schedule
 from app.repositories.schedule_repo import ScheduleRepository
 from app.schemas.schedule_schema import ScheduleCreate
 from app.services.motor_service import MotorService
-from app.services.schedule_mqtt_service import ScheduleMQTTService
 
 
 class ScheduleService:
@@ -22,18 +22,17 @@ class ScheduleService:
     - Get schedule by device
     - Delete schedule by device
     - Run background schedule checks
-    - Publish schedule changes to ESP32 over MQTT
+    - Start and stop motor through HTTP-based MotorService
     """
 
-    def __init__(self, db):
+    def __init__(self, db: Session):
         self.db = db
         self.repo = ScheduleRepository(db)
         self.motor_service = MotorService(db)
-        self.schedule_mqtt_service = ScheduleMQTTService()
 
-    def create_schedule(self, device_id: str, schedule_in: ScheduleCreate):
+    def create_schedule(self, device_id: str, schedule_in: ScheduleCreate) -> Schedule:
         """
-        Create or update a device schedule, then publish it to ESP32.
+        Create or update a device schedule.
 
         Args:
             device_id: Device identifier
@@ -41,6 +40,9 @@ class ScheduleService:
 
         Returns:
             Schedule: Created or updated schedule row
+
+        Raises:
+            AppException: For database or unexpected errors
         """
         try:
             schedule = Schedule(
@@ -54,14 +56,6 @@ class ScheduleService:
 
             saved = self.repo.create_or_update(schedule)
 
-            self.schedule_mqtt_service.publish_schedule_set(
-                device_id=saved.device_id,
-                schedule_type=saved.schedule_type,
-                pattern=saved.pattern,
-                schedule_name=saved.schedule_name,
-                is_active=saved.is_active,
-            )
-
             logger.info(
                 "Schedule created or updated successfully: device_id=%s, schedule_id=%s",
                 saved.device_id,
@@ -74,7 +68,7 @@ class ScheduleService:
 
         except SQLAlchemyError as exc:
             logger.error(
-                "DB error while creating schedule: device_id=%s, error=%s",
+                "Database error while creating schedule: device_id=%s, error=%s",
                 device_id,
                 exc,
                 exc_info=True,
@@ -96,16 +90,28 @@ class ScheduleService:
                 detail="Failed to create schedule",
             )
 
-    def get_schedule(self, device_id: str):
+    def get_schedule(self, device_id: str) -> Schedule:
         """
         Fetch schedule for a device.
+
+        Args:
+            device_id: Device identifier
+
+        Returns:
+            Schedule: Stored schedule for the device
+
+        Raises:
+            NotFoundException: If schedule does not exist
+            AppException: On unexpected error
         """
         try:
             schedule = self.repo.get_by_device(device_id)
 
             if not schedule:
                 logger.warning("No schedule found: device_id=%s", device_id)
-                raise NotFoundException(detail=f"No schedule found for device '{device_id}'")
+                raise NotFoundException(
+                    detail=f"No schedule found for device '{device_id}'"
+                )
 
             logger.info("Schedule fetched successfully: device_id=%s", device_id)
             return schedule
@@ -125,14 +131,19 @@ class ScheduleService:
                 detail="Failed to fetch schedule",
             )
 
-    def delete_schedule(self, device_id: str):
+    def delete_schedule(self, device_id: str) -> None:
         """
-        Delete a schedule for a device, then publish clear message to ESP32.
+        Delete schedule for a device.
+
+        Args:
+            device_id: Device identifier
+
+        Raises:
+            NotFoundException: If schedule does not exist
+            AppException: On database or unexpected error
         """
         try:
             self.repo.delete(device_id)
-
-            self.schedule_mqtt_service.publish_schedule_clear(device_id)
 
             logger.info("Schedule deleted successfully: device_id=%s", device_id)
 
@@ -151,7 +162,7 @@ class ScheduleService:
                 detail="Failed to delete schedule",
             )
 
-    def check_and_run(self):
+    def check_and_run(self) -> None:
         """
         Background scheduler logic.
 
@@ -189,7 +200,7 @@ class ScheduleService:
                         self.motor_service.start_motor(
                             device_id=schedule.device_id,
                             trigger_type="schedule",
-                            customer_name="Schedule",
+                            operator_name="Schedule",
                         )
 
                     elif not should_run and is_running:
@@ -202,7 +213,7 @@ class ScheduleService:
                             )
                             self.motor_service.stop_motor(
                                 device_id=schedule.device_id,
-                                customer_name="Schedule",
+                                operator_name="Schedule",
                             )
 
                 except AppException as exc:
@@ -212,6 +223,7 @@ class ScheduleService:
                         getattr(exc, "detail", str(exc)),
                         exc_info=True,
                     )
+
                 except Exception as exc:
                     logger.error(
                         "Unexpected schedule execution error for device_id=%s: %s",
@@ -241,6 +253,13 @@ class ScheduleService:
         Supported pattern types:
         - monthly
         - monthly_custom
+
+        Args:
+            pattern: Stored schedule pattern JSON
+            today_day: Current day of month
+
+        Returns:
+            list[dict]: List of time slots for today
         """
         schedule_type = pattern.get("type")
         slots: list[dict] = []
@@ -257,6 +276,13 @@ class ScheduleService:
     def _should_run_now(self, slots: list[dict], now_time: time) -> bool:
         """
         Return True if current time falls inside any provided slot.
+
+        Args:
+            slots: List of schedule slots
+            now_time: Current UTC time
+
+        Returns:
+            bool: True if device should run now, otherwise False
         """
         for slot in slots:
             try:
