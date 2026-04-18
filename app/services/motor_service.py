@@ -1,10 +1,8 @@
 from datetime import datetime
 
-import requests
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logger import logger
 from app.models.motor_log import MotorLog
@@ -16,82 +14,25 @@ class MotorService:
     Service layer for motor start and stop operations.
 
     Responsibilities:
-    - Send HTTP command to the target device using device_id
     - Prevent duplicate start if motor is already running
     - Record motor start and stop times
-    - Store operator_name for billing, khata, and usage tracking
+    - Store customer_name for billing, khata, and usage tracking
     - Update motor status as ON or OFF
+
+    Notes:
+    - This version does not send commands to any external HTTP device URL.
+    - ESP32 can later read motor state through your FastAPI endpoints or a
+      dedicated command endpoint if needed.
     """
 
     def __init__(self, db: Session):
         self.repo = MotorRepository(db)
 
-    def _send_motor_command_http(
-        self,
-        device_id: str,
-        command: str,
-        trigger_type: str,
-        operator_name: str,
-    ) -> None:
-        """
-        Send motor control command over HTTP.
-
-        Args:
-            device_id: Device identifier
-            command: ON or OFF
-            trigger_type: manual or schedule
-            operator_name: Name of operator or source
-
-        Raises:
-            AppException: If HTTP command delivery fails
-        """
-        base_url = (settings.DEVICE_HTTP_URL or "").rstrip("/")
-
-        if not base_url:
-            logger.error("DEVICE_HTTP_URL is not configured")
-            raise AppException(
-                status_code=500,
-                detail="DEVICE_HTTP_URL is not configured",
-            )
-
-        url = f"{base_url}/motor"
-
-        payload = {
-            "device_id": device_id,
-            "command": command,
-            "trigger_type": trigger_type,
-            "operator_name": operator_name,
-        }
-
-        try:
-            response = requests.post(url, json=payload, timeout=5)
-            response.raise_for_status()
-
-            logger.info(
-                "HTTP motor command sent successfully: device_id=%s, command=%s, status_code=%s",
-                device_id,
-                command,
-                response.status_code,
-            )
-
-        except requests.RequestException as exc:
-            logger.error(
-                "HTTP motor command failed: device_id=%s, command=%s, error=%s",
-                device_id,
-                command,
-                exc,
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=502,
-                detail=f"Failed to send motor command '{command}' to device '{device_id}'",
-            )
-
     def start_motor(
         self,
         device_id: str,
         trigger_type: str = "manual",
-        operator_name: str = "",
+        customer_name: str = "",
     ) -> MotorLog:
         """
         Start motor for a specific device and create a running log entry.
@@ -99,19 +40,19 @@ class MotorService:
         Args:
             device_id: Device identifier from path parameter
             trigger_type: manual or schedule
-            operator_name: Name entered from frontend for billing and khata
+            customer_name: Name entered from frontend for billing and khata
 
         Returns:
             MotorLog: Newly created or existing running motor log
 
         Raises:
-            AppException: For validation, HTTP, database, or unexpected errors
+            AppException: For validation, database, or unexpected errors
         """
         try:
-            if not operator_name or not operator_name.strip():
+            if not customer_name or not customer_name.strip():
                 raise AppException(
                     status_code=400,
-                    detail="operator_name is required",
+                    detail="customer_name is required",
                 )
 
             normalized_trigger = (trigger_type or "manual").strip().lower()
@@ -130,28 +71,21 @@ class MotorService:
                 )
                 return running
 
-            self._send_motor_command_http(
-                device_id=device_id,
-                command="ON",
-                trigger_type=normalized_trigger,
-                operator_name=operator_name.strip(),
-            )
-
             log = MotorLog(
                 device_id=device_id,
                 start_time=datetime.utcnow(),
                 trigger_type=normalized_trigger,
-                operator_name=operator_name.strip(),
+                customer_name=customer_name.strip(),
                 status="ON",
             )
 
             created = self.repo.create_log(log)
 
             logger.info(
-                "Motor started successfully: device_id=%s, log_id=%s, operator_name=%s",
+                "Motor started successfully: device_id=%s, log_id=%s, customer_name=%s",
                 device_id,
                 created.id,
-                created.operator_name,
+                created.customer_name,
             )
             return created
 
@@ -185,20 +119,20 @@ class MotorService:
     def stop_motor(
         self,
         device_id: str,
-        operator_name: str | None = None,
+        customer_name: str | None = None,
     ) -> MotorLog | None:
         """
         Stop motor for a specific device and close running log entry.
 
         Args:
             device_id: Device identifier from path parameter
-            operator_name: Optional name from frontend
+            customer_name: Optional name from frontend
 
         Returns:
             MotorLog | None: Updated stopped log or None if no running log exists
 
         Raises:
-            AppException: For HTTP, database, or unexpected errors
+            AppException: For database or unexpected errors
         """
         try:
             log = self.repo.get_running_motor(device_id)
@@ -209,17 +143,10 @@ class MotorService:
                 )
                 return None
 
-            final_operator_name = (
-                operator_name.strip()
-                if operator_name and operator_name.strip()
-                else log.operator_name
-            )
-
-            self._send_motor_command_http(
-                device_id=device_id,
-                command="OFF",
-                trigger_type=log.trigger_type,
-                operator_name=final_operator_name,
+            final_customer_name = (
+                customer_name.strip()
+                if customer_name and customer_name.strip()
+                else log.customer_name
             )
 
             end_time = datetime.utcnow()
@@ -228,7 +155,7 @@ class MotorService:
             log.end_time = end_time
             log.duration_minutes = max(1, int(duration.total_seconds() / 60))
             log.status = "OFF"
-            log.operator_name = final_operator_name
+            log.customer_name = final_customer_name
 
             updated = self.repo.update_log(log)
 

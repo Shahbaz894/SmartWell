@@ -1,49 +1,59 @@
+# app/core/security.py
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
-from app.core.exceptions import UnauthorizedAccess
-from app.core.logger import logger
 from app.services.jwt_handler import JWTHandler
-
+from app.core.exceptions import AppException
+from app.core.logger import logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db:    Session = Depends(get_db),
 ) -> User:
     """
-    Validate JWT token and return authenticated user.
+    Validate JWT Bearer token and return the authenticated User.
+
+    Raises:
+        AppException: 401 if token is missing, invalid, expired,
+                      or the user no longer exists in the DB.
     """
 
-    logger.info("Authenticating user via JWT")
-
+    # ── 1. Decode & validate token ────────────────────────────────────────────
     try:
-        payload = JWTHandler.verify_token(token)
+        payload = JWTHandler.decode_token(token)
+    except AppException:
+        raise  # already a clean 401 — let it go
+    except Exception as exc:
+        logger.error("JWT decode failed: %s", repr(exc), exc_info=True)
+        raise AppException(401, "Invalid or expired token")
 
-        user_id = payload.get("sub")
+    # ── 2. Extract subject (user_id) ──────────────────────────────────────────
+    user_id = payload.get("sub")
 
-        if not user_id:
-            logger.warning("JWT missing 'sub'")
-            raise UnauthorizedAccess()
+    if not user_id:
+        logger.warning("JWT payload missing 'sub' claim | payload=%s", payload)
+        raise AppException(401, "Invalid token — missing subject")
 
+    # ── 3. Load user from DB ──────────────────────────────────────────────────
+    try:
         user = db.query(User).filter(User.id == user_id).first()
+    except Exception as exc:
+        logger.error(
+            "DB error during auth | user_id=%s error=%s",
+            user_id, repr(exc), exc_info=True,
+        )
+        raise AppException(500, "Authentication service error")
 
-        if not user:
-            logger.warning("User not found: id=%s", user_id)
-            raise UnauthorizedAccess()
+    if not user:
+        logger.warning("Authenticated user_id not found in DB | user_id=%s", user_id)
+        raise AppException(401, "User not found")
 
-        logger.info("User authenticated: %s", user.email)
-
-        return user
-
-    except UnauthorizedAccess:
-        raise
-
-    except Exception as e:
-        logger.error("Auth error: %s", str(e), exc_info=True)
-        raise UnauthorizedAccess()
+    logger.debug("User authenticated | user_id=%s email=%s", user.id, user.email)
+    return user

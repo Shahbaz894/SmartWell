@@ -19,7 +19,7 @@ class MotorLog(Base):
     trigger_type = Column(String(20), nullable=False)
 
     # Name entered from frontend for billing / khata usage
-    operator_name = Column(String(100), nullable=False)
+    customer_name = Column(String(100), nullable=False)
 
     # ON / OFF
     status = Column(String(10), nullable=False, server_default="ON")

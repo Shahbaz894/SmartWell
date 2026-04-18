@@ -1,603 +1,19 @@
-# # app/services/khata_service.py
-# #
-# # Khata (ledger) service layer.
-# # Handles all business logic: billing calculations, payment tracking,
-# # device ownership validation, and entry lifecycle management.
-# #
-# # ── Design Notes ──────────────────────────────────────────────────────────────
-# #  • "user_id" in KhataEntry refers to the LOGGED-IN USER (tube-well owner).
-# #    It is always set from `user_id` (JWT claim) — never from the request body.
-# #  • The frontend may send a `customer_id` field; it is explicitly stripped
-# #    before any DB operation to prevent injection or overwrite attacks.
-# #  • Cleared entries (is_cleared=True) remain visible; explicit DELETE required.
-# #  • motor_log_id FK existence is validated BEFORE the INSERT so the DB never
-# #    raises a raw IntegrityError that would surface as an opaque 500.
-# #
-# # ── AppException Usage ────────────────────────────────────────────────────────
-# #  AppException(status_code: int, detail: str)
-# #  ALWAYS pass status_code as a keyword arg to avoid passing a string where
-# #  an int is expected (which itself raises a TypeError → 500).
-# #
-# #  Convention used throughout this file:
-# #    400  Bad request / validation failure
-# #    403  Ownership / access denied
-# #    404  Resource not found  (NotFoundException preferred)
-# #    500  Unexpected / unhandled error
-# # ──────────────────────────────────────────────────────────────────────────────
-
-# from uuid import uuid4
-# from datetime import datetime
-
-# import sqlalchemy.exc
-
-# from app.models.device import Device
-# from app.models.motor_log import MotorLog
-# from app.repositories.khata_repo import KhataRepository
-# from app.models.khata_entry import KhataEntry
-# from app.core.logger import logger
-# from app.core.exceptions import AppException, NotFoundException
-
-
-# class KhataService:
-#     """
-#     Service layer for Khata (ledger) operations.
-
-#     Responsibilities
-#     ----------------
-#     - Validate device ownership via user_id (JWT claim — never request body).
-#     - Validate motor_log_id FK existence *before* INSERT to surface a clean
-#       400 Bad Request instead of a raw DB IntegrityError → 500.
-#     - Auto-derive run_hours from a linked MotorLog when not provided manually.
-#     - Calculate total_bill, balance, and is_cleared flag.
-#     - Delegate all persistence to KhataRepository.
-
-#     Error Handling Strategy
-#     -----------------------
-#     AppException / NotFoundException  → re-raised as-is (router maps to HTTP).
-#     sqlalchemy.exc.IntegrityError     → caught explicitly; raises AppException(400).
-#     All other Exception               → logged with traceback + AppException(500).
-#     """
-
-#     def __init__(self, db):
-#         self.db   = db
-#         self.repo = KhataRepository(db)
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # CREATE
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def create_entry(self, user_id: str, data: dict):
-#         """
-#         Create a new Khata entry for the authenticated user.
-
-#         Parameters
-#         ----------
-#         user_id : str
-#             ID of the authenticated user (tube-well owner), sourced from JWT.
-#         data : dict
-#             Validated request body from KhataCreate schema.
-
-#         Returns
-#         -------
-#         KhataEntry
-#             The newly created and committed entry.
-
-#         Raises
-#         ------
-#         AppException(400)
-#             - Device not found or does not belong to this user.
-#             - motor_log_id provided but row does not exist in motor_logs
-#               (FK pre-validation — prevents IntegrityError 500).
-#             - Motor log is incomplete / still running (no end_time yet).
-#             - run_hours could not be determined from either field or log.
-#             - cash_received is negative.
-#             - cash_received exceeds total_bill.
-#         AppException(500)
-#             Unexpected database or runtime error.
-#         """
-#         try:
-#             # ── Step 1: Verify device ownership ──────────────────────────────
-#             # Device.user_id is the owner column; never trust customer_id/body.
-#             device = (
-#                 self.db.query(Device)
-#                 .filter(
-#                     Device.id      == data["device_id"],
-#                     Device.user_id == user_id           # ← always JWT, never body
-#                 )
-#                 .first()
-#             )
-#             if not device:
-#                 logger.warning(
-#                     "Device access denied: device_id=%s, user_id=%s",
-#                     data.get("device_id"), user_id,
-#                 )
-#                 raise AppException(
-#                     status_code=400,
-#                     detail="Device not found or access denied",
-#                 )
-
-#             # ── Step 2: Default date to today if not supplied ─────────────────
-#             if not data.get("date"):
-#                 data["date"] = datetime.now().date()
-
-#             # ── Step 3: Validate motor_log_id FK *before* INSERT ──────────────
-#             #
-#             # PostgreSQL raises ForeignKeyViolation at commit time when
-#             # motor_log_id references a non-existent row, which surfaces as a
-#             # 500 IntegrityError.  Querying here first returns a clear 400.
-#             #
-#             if data.get("motor_log_id"):
-#                 log_exists = (
-#                     self.db.query(MotorLog.id)
-#                     .filter(MotorLog.id == data["motor_log_id"])
-#                     .first()
-#                 )
-#                 if not log_exists:
-#                     logger.warning(
-#                         "FK pre-validation failed: motor_log_id=%s not in motor_logs",
-#                         data["motor_log_id"],
-#                     )
-#                     raise AppException(
-#                         status_code=400,
-#                         detail=(
-#                             f"motor_log_id '{data['motor_log_id']}' does not exist. "
-#                             "Create the motor log first, or omit motor_log_id."
-#                         ),
-#                     )
-
-#             # ── Step 4: Derive run_hours from MotorLog (if not provided) ──────
-#             # log existence is already confirmed in Step 3 when motor_log_id set.
-#             if not data.get("run_hours") and data.get("motor_log_id"):
-#                 log = (
-#                     self.db.query(MotorLog)
-#                     .filter(MotorLog.id == data["motor_log_id"])
-#                     .first()
-#                 )
-#                 if not (log.start_time and log.end_time):
-#                     raise AppException(
-#                         status_code=400,
-#                         detail="Motor log is incomplete — motor may still be running",
-#                     )
-#                 duration_seconds  = (log.end_time - log.start_time).total_seconds()
-#                 data["run_hours"] = round(duration_seconds / 3600, 2)
-#                 logger.debug(
-#                     "Derived run_hours=%.2f from motor_log_id=%s",
-#                     data["run_hours"], data["motor_log_id"],
-#                 )
-
-#             if not data.get("run_hours"):
-#                 raise AppException(
-#                     status_code=400,
-#                     detail=(
-#                         "Could not determine run_hours — "
-#                         "provide 'run_hours' directly or a valid 'motor_log_id'."
-#                     ),
-#                 )
-
-#             # ── Step 5: Billing calculations ──────────────────────────────────
-#             hours = float(data["run_hours"])
-#             price = float(data["price_per_hour"])
-
-#             if data.get("total_bill") is None:
-#                 data["total_bill"] = round(hours * price, 2)
-
-#             cash = float(data.get("cash_received") or 0)
-
-#             if cash < 0:
-#                 raise AppException(
-#                     status_code=400,
-#                     detail="Cash received cannot be negative",
-#                 )
-#             if cash > data["total_bill"]:
-#                 raise AppException(
-#                     status_code=400,
-#                     detail=(
-#                         f"Cash received ({cash}) cannot exceed "
-#                         f"total bill ({data['total_bill']})"
-#                     ),
-#                 )
-
-#             data["balance"]    = round(data["total_bill"] - cash, 2)
-#             data["is_cleared"] = data["balance"] <= 0
-
-#             # ── Step 6: Strip fields that must NOT come from the request body ─
-#             #
-#             # customer_id → always set from JWT user_id below (Step 7).
-#             # created_at  → DB server_default (now()); must not be overwritten.
-#             # user_id     → not a KhataEntry column; strip to avoid **data leak.
-#             #
-#             for field in ("customer_id", "created_at", "user_id"):
-#                 data.pop(field, None)
-
-#             # ── Step 7: Persist ───────────────────────────────────────────────
-#             entry = KhataEntry(
-#                 id      = str(uuid4()),
-#                 user_id = user_id,   # always from JWT — never from request body
-#                 **data,
-#             )
-#             created = self.repo.create_entry(entry)
-#             logger.info(
-#                 "Khata entry created: id=%s, user_id=%s, customer=%s, "
-#                 "total_bill=%s, balance=%s, cleared=%s",
-#                 created.id, user_id, created.customer_name,
-#                 created.total_bill, created.balance, created.is_cleared,
-#             )
-#             return created
-
-#         except (AppException, NotFoundException):
-#             raise
-
-#         except sqlalchemy.exc.IntegrityError as exc:
-#             # Safety net: catches any FK / unique violation missed by pre-checks.
-#             logger.error(
-#                 "IntegrityError on khata create: %s", exc, exc_info=True
-#             )
-#             raise AppException(
-#                 status_code=400,
-#                 detail=(
-#                     "Database integrity error — a referenced record does not exist "
-#                     "or a unique constraint was violated. "
-#                     "Verify device_id and motor_log_id."
-#                 ),
-#             )
-
-#         except Exception as exc:
-#             logger.error("Khata creation failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while creating entry: {exc}",
-#             )
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # UPDATE PAYMENT  (additive — partial or full settlement)
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def update_payment(self, entry_id: str, user_id: str, cash_received: float):
-#         """
-#         Record an additional payment against an existing entry.
-
-#         Payments are additive: new cash is added to entry.cash_received.
-#         The entry remains visible after full payment (is_cleared=True);
-#         deletion requires a separate explicit DELETE call.
-
-#         Parameters
-#         ----------
-#         entry_id     : str   UUID of the KhataEntry to update.
-#         user_id      : str   Authenticated user from JWT — used to verify ownership.
-#         cash_received: float Additional cash amount received (must be > 0).
-
-#         Returns
-#         -------
-#         KhataEntry
-#             Updated entry with recalculated balance and is_cleared flag.
-
-#         Raises
-#         ------
-#         NotFoundException    Entry not found.
-#         AppException(403)   Caller does not own this entry.
-#         AppException(400)   Entry already cleared, or invalid cash amount.
-#         AppException(500)   Unexpected database or runtime error.
-#         """
-#         try:
-#             entry = self.repo.get_entry(entry_id)
-
-#             if entry.user_id != user_id:
-#                 logger.warning(
-#                     "Payment update denied: entry_id=%s, user_id=%s, owner=%s",
-#                     entry_id, user_id, entry.user_id,
-#                 )
-#                 raise AppException(
-#                     status_code=403,
-#                     detail="Access denied: this entry does not belong to you",
-#                 )
-
-#             if entry.is_cleared:
-#                 raise AppException(
-#                     status_code=400,
-#                     detail="Entry is already fully cleared",
-#                 )
-
-#             if cash_received <= 0:
-#                 raise AppException(
-#                     status_code=400,
-#                     detail="Payment amount must be greater than zero",
-#                 )
-
-#             new_total_cash = round(float(entry.cash_received or 0) + cash_received, 2)
-
-#             if new_total_cash > float(entry.total_bill):
-#                 raise AppException(
-#                     status_code=400,
-#                     detail=(
-#                         f"Total cash ({new_total_cash}) would exceed "
-#                         f"total bill ({entry.total_bill})"
-#                     ),
-#                 )
-
-#             entry.cash_received = new_total_cash
-#             entry.balance       = round(float(entry.total_bill) - new_total_cash, 2)
-#             entry.is_cleared    = entry.balance <= 0
-
-#             saved = self.repo.save(entry)
-#             logger.info(
-#                 "Payment updated: id=%s, customer=%s, new_cash=%.2f, "
-#                 "balance=%.2f, cleared=%s",
-#                 entry_id, entry.customer_name,
-#                 new_total_cash, entry.balance, entry.is_cleared,
-#             )
-#             return saved
-
-#         except (AppException, NotFoundException):
-#             raise
-
-#         except sqlalchemy.exc.IntegrityError as exc:
-#             logger.error(
-#                 "IntegrityError on payment update: %s", exc, exc_info=True
-#             )
-#             raise AppException(
-#                 status_code=400,
-#                 detail="Database integrity error while updating payment.",
-#             )
-
-#         except Exception as exc:
-#             logger.error("Update payment failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while updating payment: {exc}",
-#             )
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # UPDATE ENTRY  (general field corrections / manual edits)
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def update_entry(self, entry_id: str, user_id: str, data: dict):
-#         """
-#         Update editable fields on a Khata entry.
-
-#         Ownership is verified before any mutation. The repository is
-#         responsible for recalculating balance and is_cleared from the
-#         updated fields.
-
-#         Parameters
-#         ----------
-#         entry_id : str   UUID of the entry to update.
-#         user_id  : str   Authenticated user from JWT — must match entry.user_id.
-#         data     : dict  Partial fields to update (from KhataUpdate schema).
-
-#         Returns
-#         -------
-#         KhataEntry
-#             The updated entry.
-
-#         Raises
-#         ------
-#         NotFoundException   Entry not found.
-#         AppException(403)   Caller does not own this entry.
-#         AppException(500)   Unexpected database or runtime error.
-#         """
-#         try:
-#             entry = self.repo.get_entry(entry_id)
-
-#             if entry.user_id != user_id:
-#                 logger.warning(
-#                     "Update denied: entry_id=%s, user_id=%s, owner=%s",
-#                     entry_id, user_id, entry.user_id,
-#                 )
-#                 raise AppException(
-#                     status_code=403,
-#                     detail="Access denied: this entry does not belong to you",
-#                 )
-
-#             updated = self.repo.update_entry(entry, data)
-#             logger.info(
-#                 "Entry updated: id=%s, customer=%s, balance=%.2f, cleared=%s",
-#                 entry_id, updated.customer_name, updated.balance, updated.is_cleared,
-#             )
-#             return updated
-
-#         except (AppException, NotFoundException):
-#             raise
-
-#         except sqlalchemy.exc.IntegrityError as exc:
-#             logger.error(
-#                 "IntegrityError on entry update: %s", exc, exc_info=True
-#             )
-#             raise AppException(
-#                 status_code=400,
-#                 detail="Database integrity error while updating entry.",
-#             )
-
-#         except Exception as exc:
-#             logger.error("Update entry failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while updating entry: {exc}",
-#             )
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # GET ALL  (for one user — cleared entries remain visible)
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def get_all_entries(self, user_id: str):
-#         """
-#         Return every Khata entry belonging to the authenticated user.
-
-#         Cleared entries (is_cleared=True) are included. The caller / frontend
-#         can filter on is_cleared if only pending entries are needed.
-
-#         Parameters
-#         ----------
-#         user_id : str   Authenticated user from JWT.
-
-#         Returns
-#         -------
-#         list[KhataEntry]
-
-#         Raises
-#         ------
-#         AppException(500)   Unexpected database or runtime error.
-#         """
-#         try:
-#             entries = self.repo.get_all_entries(user_id)
-#             logger.debug(
-#                 "Fetched %d entries for user_id=%s", len(entries), user_id
-#             )
-#             return entries
-
-#         except Exception as exc:
-#             logger.error("Get all entries failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while fetching entries: {exc}",
-#             )
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # GET ONE
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def get_entry(self, entry_id: str, user_id: str):
-#         """
-#         Fetch a single entry, verifying it belongs to the requesting user.
-
-#         Parameters
-#         ----------
-#         entry_id : str   UUID of the entry.
-#         user_id  : str   Authenticated user from JWT.
-
-#         Returns
-#         -------
-#         KhataEntry
-
-#         Raises
-#         ------
-#         NotFoundException   Entry not found (raised by repository).
-#         AppException(403)   Caller does not own this entry.
-#         AppException(500)   Unexpected database or runtime error.
-#         """
-#         try:
-#             entry = self.repo.get_entry(entry_id)
-
-#             if entry.user_id != user_id:
-#                 logger.warning(
-#                     "Get entry denied: entry_id=%s, user_id=%s, owner=%s",
-#                     entry_id, user_id, entry.user_id,
-#                 )
-#                 raise AppException(
-#                     status_code=403,
-#                     detail="Access denied: this entry does not belong to you",
-#                 )
-
-#             return entry
-
-#         except (AppException, NotFoundException):
-#             raise
-
-#         except Exception as exc:
-#             logger.error("Get entry failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while fetching entry: {exc}",
-#             )
-
-#     # ─────────────────────────────────────────────────────────────────────────
-#     # DELETE  (only allowed once fully cleared; hard delete)
-#     # ─────────────────────────────────────────────────────────────────────────
-#     def delete_entry(self, entry_id: str, user_id: str):
-#         """
-#         Permanently delete a Khata entry.
-
-#         Rules
-#         -----
-#         - Ownership verified: entry.user_id must equal the JWT user_id.
-#         - Deletion is only permitted when is_cleared=True. Entries with a
-#           pending balance cannot be removed; clear the balance first.
-
-#         Parameters
-#         ----------
-#         entry_id : str   UUID of the entry to delete.
-#         user_id  : str   Authenticated user from JWT.
-
-#         Returns
-#         -------
-#         bool  True on successful deletion.
-
-#         Raises
-#         ------
-#         NotFoundException   Entry not found (raised by repository).
-#         AppException(403)   Caller does not own this entry.
-#         AppException(400)   Entry has a pending balance (not yet cleared).
-#         AppException(500)   Unexpected database or runtime error.
-#         """
-#         try:
-#             entry = self.repo.get_entry(entry_id)
-
-#             if entry.user_id != user_id:
-#                 logger.warning(
-#                     "Delete denied: entry_id=%s, user_id=%s, owner=%s",
-#                     entry_id, user_id, entry.user_id,
-#                 )
-#                 raise AppException(
-#                     status_code=403,
-#                     detail="Access denied: this entry does not belong to you",
-#                 )
-
-#             if not entry.is_cleared:
-#                 raise AppException(
-#                     status_code=400,
-#                     detail=(
-#                         f"Cannot delete: balance of {entry.balance} PKR is still pending. "
-#                         "Clear the balance first."
-#                     ),
-#                 )
-
-#             result = self.repo.delete_entry(entry)
-#             logger.info(
-#                 "Entry deleted: id=%s, customer=%s, user_id=%s",
-#                 entry_id, entry.customer_name, user_id,
-#             )
-#             return result
-
-#         except (AppException, NotFoundException):
-#             raise
-
-#         except Exception as exc:
-#             logger.error("Delete entry failed: %s", exc, exc_info=True)
-#             raise AppException(
-#                 status_code=500,
-#                 detail=f"Unexpected error while deleting entry: {exc}",
-#             )
 # app/services/khata_service.py
 #
-# Khata (ledger) service layer.
-# Handles all business logic: billing calculations, payment tracking,
-# device ownership validation, and entry lifecycle management.
+# Business-logic layer for Khata (ledger) entries.
 #
-# ── Design Notes ──────────────────────────────────────────────────────────────
-#  • "user_id" in KhataEntry refers to the LOGGED-IN USER (tube-well owner).
-#    It is always set from `user_id` (JWT claim) — never from the request body.
-#  • The frontend may send a `customer_id` field; it is explicitly stripped
-#    before any DB operation to prevent injection or overwrite attacks.
-#  • Cleared entries (is_cleared=True) remain visible; explicit DELETE required.
-#  • motor_log_id FK existence is validated BEFORE the INSERT so the DB never
-#    raises a raw IntegrityError that would surface as an opaque 500.
-#
-# ── Computed response fields ──────────────────────────────────────────────────
-#  remaining_balance  = balance  (alias, not stored in DB)
-#  payment_status     = "paid" | "partial" | "unpaid"  (not stored in DB)
-#  Both are attached to the ORM instance after every mutating operation so
-#  KhataResponse can serialize them via from_attributes=True.
-#
-# ── AppException Usage ────────────────────────────────────────────────────────
-#  AppException(status_code: int, detail: str)
-#  ALWAYS pass status_code as a keyword arg to avoid passing a string where
-#  an int is expected (which itself raises a TypeError → 500).
-#
-#  Convention used throughout this file:
-#    400  Bad request / validation failure
-#    403  Ownership / access denied
-#    404  Resource not found  (NotFoundException preferred)
-#    500  Unexpected / unhandled error
-# ──────────────────────────────────────────────────────────────────────────────
+# Responsibilities
+# ────────────────
+# • Orchestrates device/motor-log validation, billing calculations,
+#   payment logic, and computed response fields.
+# • Converts all Decimal values returned by PostgreSQL/SQLAlchemy Numeric
+#   columns to float before arithmetic — this prevents silent type errors.
+# • Never exposes raw DB exceptions to the caller; re-raises as AppException.
+# • NotFoundException from the repo is always converted to AppException(404).
 
+from decimal import Decimal
 from uuid import uuid4
 from datetime import datetime
-
-import sqlalchemy.exc
 
 from app.models.device import Device
 from app.models.motor_log import MotorLog
@@ -607,482 +23,495 @@ from app.core.logger import logger
 from app.core.exceptions import AppException, NotFoundException
 
 
-def _attach_computed_fields(entry: KhataEntry) -> KhataEntry:
+def _to_float(value) -> float:
     """
-    Attach remaining_balance and payment_status onto the ORM instance.
+    Safely convert Decimal, int, float, or None → float.
 
-    These fields are NOT columns in the DB — they are computed from
-    balance and cash_received and attached dynamically so that
-    KhataResponse (from_attributes=True) can read them.
+    SQLAlchemy Numeric columns return decimal.Decimal objects.
+    Mixing Decimal with float causes TypeError in arithmetic.
+    This helper centralises the conversion.
 
-    Rules
-    -----
-    remaining_balance  = balance  (float)
-    payment_status:
-        "paid"    → balance == 0  (is_cleared=True)
-        "partial" → balance > 0 and cash_received > 0
-        "unpaid"  → balance > 0 and cash_received == 0
+    Args:
+        value: Any numeric-ish value or None.
+
+    Returns:
+        float: Converted value, or 0.0 if value is None/falsy.
     """
-    balance       = float(entry.balance       or 0)
-    cash_received = float(entry.cash_received or 0)
-
-    entry.remaining_balance = round(balance, 2)
-
-    if balance <= 0:
-        entry.payment_status = "paid"
-    elif cash_received > 0:
-        entry.payment_status = "partial"
-    else:
-        entry.payment_status = "unpaid"
-
-    return entry
+    if value is None:
+        return 0.0
+    return float(value)
 
 
 class KhataService:
     """
-    Service layer for Khata (ledger) operations.
+    Service layer for all Khata (ledger) business operations.
 
-    Responsibilities
-    ----------------
-    - Validate device ownership via user_id (JWT claim — never request body).
-    - Validate motor_log_id FK existence *before* INSERT to surface a clean
-      400 Bad Request instead of a raw DB IntegrityError → 500.
-    - Auto-derive run_hours from a linked MotorLog when not provided manually.
-    - Calculate total_bill, balance, and is_cleared flag.
-    - Attach remaining_balance and payment_status to every returned entry.
-    - Delegate all persistence to KhataRepository.
-
-    Error Handling Strategy
-    -----------------------
-    AppException / NotFoundException  → re-raised as-is (router maps to HTTP).
-    sqlalchemy.exc.IntegrityError     → caught explicitly; raises AppException(400).
-    All other Exception               → logged with traceback + AppException(500).
+    Args:
+        db: SQLAlchemy Session injected by FastAPI dependency system.
     """
 
     def __init__(self, db):
-        self.db   = db
+        self.db = db
         self.repo = KhataRepository(db)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CREATE
+    # PRIVATE HELPERS
     # ─────────────────────────────────────────────────────────────────────────
-    def create_entry(self, user_id: str, data: dict):
+
+    @staticmethod
+    def _compute_payment_status(balance: float, cash: float) -> str:
         """
-        Create a new Khata entry for the authenticated user.
+        Derive human-readable payment status from balance and cash received.
 
-        Parameters
-        ----------
-        user_id : str
-            ID of the authenticated user (tube-well owner), sourced from JWT.
-        data : dict
-            Validated request body from KhataCreate schema.
+        Rules:
+            balance <= 0          → "paid"
+            balance > 0, cash > 0 → "partial"
+            balance > 0, cash = 0 → "unpaid"
 
-        Returns
-        -------
-        KhataEntry
-            The newly created and committed entry with remaining_balance
-            and payment_status attached.
+        Args:
+            balance (float): Remaining amount owed.
+            cash    (float): Total cash received so far.
 
-        Raises
-        ------
-        AppException(400)
-            - Device not found or does not belong to this user.
-            - motor_log_id provided but row does not exist in motor_logs.
-            - Motor log is incomplete / still running (no end_time yet).
-            - run_hours could not be determined from either field or log.
-            - cash_received is negative.
-            - cash_received exceeds total_bill.
-        AppException(500)
-            Unexpected database or runtime error.
+        Returns:
+            str: One of "paid" | "partial" | "unpaid".
         """
-        try:
-            # ── Step 1: Verify device ownership ──────────────────────────────
-            device = (
-                self.db.query(Device)
-                .filter(
-                    Device.id      == data["device_id"],
-                    Device.user_id == user_id
-                )
+        if balance <= 0:
+            return "paid"
+        if cash > 0:
+            return "partial"
+        return "unpaid"
+
+    @staticmethod
+    def _attach_computed_fields(entry: KhataEntry) -> KhataEntry:
+        """
+        Attach non-persisted computed fields to an ORM entry before returning.
+
+        These fields exist on KhataResponse but are NOT stored in the DB:
+            • remaining_balance  — mirrors the DB balance column
+            • payment_status     — derived from balance + cash_received
+
+        Attaching them as instance attributes works because Pydantic's
+        from_attributes=True reads from __dict__, not from DB columns only.
+
+        Args:
+            entry (KhataEntry): ORM object fresh from a DB query.
+
+        Returns:
+            KhataEntry: Same object, mutated in place (fluent helper).
+        """
+        balance = _to_float(entry.balance)
+        cash    = _to_float(entry.cash_received)
+
+        entry.remaining_balance = balance
+        entry.payment_status    = KhataService._compute_payment_status(
+            balance, cash
+        )
+        return entry
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CREATE ENTRY
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def create_entry(self, user_id: str, data: dict) -> KhataEntry:
+        """
+        Validate inputs, compute billing fields, and persist a new KhataEntry.
+
+        Validation steps (in order):
+            1. Device must exist and belong to the authenticated user.
+            2. If motor_log_id supplied → derive run_hours from log timestamps.
+            3. run_hours must be present (either manual or from motor log).
+            4. Compute total_bill = run_hours × price_per_hour.
+            5. Validate cash_received ≥ 0.
+            6. Compute balance and is_cleared.
+
+        Args:
+            user_id (str): UUID of the authenticated user (from JWT).
+            data    (dict): Deserialised request body from KhataCreate schema.
+
+        Returns:
+            KhataEntry: Persisted entry with computed fields attached.
+
+        Raises:
+            AppException: 400 on validation failure, 500 on DB error.
+        """
+        logger.info(
+            "create_entry called | user_id=%s customer=%s",
+            user_id,
+            data.get("customer_name"),
+        )
+
+        # ── 1. Device ownership check ─────────────────────────────────────────
+        device = (
+            self.db.query(Device)
+            .filter(
+                Device.id      == data["device_id"],
+                Device.user_id == user_id,
+            )
+            .first()
+        )
+        if not device:
+            raise AppException(400, "Device not found or does not belong to you")
+
+        # ── 2. Default date ───────────────────────────────────────────────────
+        if not data.get("date"):
+            data["date"] = datetime.now().date()
+
+        # ── 3. Motor log → run_hours ──────────────────────────────────────────
+        if data.get("motor_log_id"):
+            log = (
+                self.db.query(MotorLog)
+                .filter(MotorLog.id == data["motor_log_id"])
                 .first()
             )
-            if not device:
-                logger.warning(
-                    "Device access denied: device_id=%s, user_id=%s",
-                    data.get("device_id"), user_id,
-                )
+            if not log:
+                raise AppException(400, "Motor log not found")
+
+            if not log.start_time or not log.end_time:
                 raise AppException(
-                    status_code=400,
-                    detail="Device not found or access denied",
+                    400,
+                    "Motor log is incomplete — motor may still be running",
                 )
 
-            # ── Step 2: Default date to today if not supplied ─────────────────
-            if not data.get("date"):
-                data["date"] = datetime.now().date()
+            run_seconds      = (log.end_time - log.start_time).total_seconds()
+            data["run_hours"] = round(run_seconds / 3600, 2)
 
-            # ── Step 3: Validate motor_log_id FK *before* INSERT ──────────────
-            if data.get("motor_log_id"):
-                log_exists = (
-                    self.db.query(MotorLog.id)
-                    .filter(MotorLog.id == data["motor_log_id"])
-                    .first()
-                )
-                if not log_exists:
-                    logger.warning(
-                        "FK pre-validation failed: motor_log_id=%s not in motor_logs",
-                        data["motor_log_id"],
-                    )
-                    raise AppException(
-                        status_code=400,
-                        detail=(
-                            f"motor_log_id '{data['motor_log_id']}' does not exist. "
-                            "Create the motor log first, or omit motor_log_id."
-                        ),
-                    )
-
-            # ── Step 4: Derive run_hours from MotorLog (if not provided) ──────
-            if not data.get("run_hours") and data.get("motor_log_id"):
-                log = (
-                    self.db.query(MotorLog)
-                    .filter(MotorLog.id == data["motor_log_id"])
-                    .first()
-                )
-                if not (log.start_time and log.end_time):
-                    raise AppException(
-                        status_code=400,
-                        detail="Motor log is incomplete — motor may still be running",
-                    )
-                duration_seconds  = (log.end_time - log.start_time).total_seconds()
-                data["run_hours"] = round(duration_seconds / 3600, 2)
-                logger.debug(
-                    "Derived run_hours=%.2f from motor_log_id=%s",
-                    data["run_hours"], data["motor_log_id"],
-                )
-
-            if not data.get("run_hours"):
-                raise AppException(
-                    status_code=400,
-                    detail=(
-                        "Could not determine run_hours — "
-                        "provide 'run_hours' directly or a valid 'motor_log_id'."
-                    ),
-                )
-
-            # ── Step 5: Billing calculations ──────────────────────────────────
-            hours = float(data["run_hours"])
-            price = float(data["price_per_hour"])
-
-            if data.get("total_bill") is None:
-                data["total_bill"] = round(hours * price, 2)
-
-            cash = float(data.get("cash_received") or 0)
-
-            if cash < 0:
-                raise AppException(
-                    status_code=400,
-                    detail="Cash received cannot be negative",
-                )
-            if cash > data["total_bill"]:
-                raise AppException(
-                    status_code=400,
-                    detail=(
-                        f"Cash received ({cash}) cannot exceed "
-                        f"total bill ({data['total_bill']})"
-                    ),
-                )
-
-            data["balance"]    = round(data["total_bill"] - cash, 2)
-            data["is_cleared"] = data["balance"] <= 0
-
-            # ── Step 6: Strip fields that must NOT go into KhataEntry ─────────
-            #
-            # remaining_balance  → computed; not a DB column
-            # payment_status     → computed; not a DB column
-            # customer_id        → always set from JWT (Step 7)
-            # created_at         → DB server_default
-            # user_id            → not a KhataEntry kwarg (passed explicitly)
-            #
-            for field in (
-                "remaining_balance", "payment_status",
-                "customer_id", "created_at", "user_id",
-            ):
-                data.pop(field, None)
-
-            # ── Step 7: Persist ───────────────────────────────────────────────
-            entry = KhataEntry(
-                id      = str(uuid4()),
-                user_id = user_id,   # always from JWT — never from request body
-                **data,
-            )
-            created = self.repo.create_entry(entry)
-            logger.info(
-                "Khata entry created: id=%s, user_id=%s, customer=%s, "
-                "total_bill=%s, balance=%s, cleared=%s",
-                created.id, user_id, created.customer_name,
-                created.total_bill, created.balance, created.is_cleared,
+            logger.debug(
+                "run_hours derived from motor_log | log_id=%s run_hours=%s",
+                data["motor_log_id"],
+                data["run_hours"],
             )
 
-            # ── Step 8: Attach computed response fields ────────────────────────
-            return _attach_computed_fields(created)
-
-        except (AppException, NotFoundException):
-            raise
-
-        except sqlalchemy.exc.IntegrityError as exc:
-            logger.error(
-                "IntegrityError on khata create: %s", exc, exc_info=True
-            )
+        # ── 4. run_hours guard ────────────────────────────────────────────────
+        if not data.get("run_hours"):
             raise AppException(
-                status_code=400,
-                detail=(
-                    "Database integrity error — a referenced record does not exist "
-                    "or a unique constraint was violated. "
-                    "Verify device_id and motor_log_id."
-                ),
+                400,
+                "run_hours is required — supply it directly or via motor_log_id",
             )
 
-        except Exception as exc:
-            logger.error("Khata creation failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while creating entry: {exc}",
-            )
+        # ── 5. Billing calculation ────────────────────────────────────────────
+        run_hours      = round(_to_float(data["run_hours"]),      2)
+        price_per_hour = round(_to_float(data["price_per_hour"]), 2)
+        total_bill     = round(run_hours * price_per_hour,         2)
+
+        # ── 6. Payment logic ──────────────────────────────────────────────────
+        cash = round(_to_float(data.get("cash_received")), 2)
+        if cash < 0:
+            raise AppException(400, "cash_received cannot be negative")
+
+        balance    = round(total_bill - cash, 2)
+        is_cleared = balance <= 0
+
+        # ── 7. Merge computed values back into data dict ──────────────────────
+        data.update(
+            run_hours      = run_hours,
+            price_per_hour = price_per_hour,
+            total_bill     = total_bill,
+            cash_received  = cash,
+            balance        = balance,
+            is_cleared     = is_cleared,
+        )
+
+        # ── 8. Strip fields that must not reach the ORM constructor ───────────
+        for field in ("remaining_balance", "payment_status", "user_id"):
+            data.pop(field, None)
+
+        # ── 9. Build and persist ORM object ───────────────────────────────────
+        entry = KhataEntry(
+            id      = str(uuid4()),
+            user_id = user_id,
+            **data,
+        )
+
+        created = self.repo.create_entry(entry)
+
+        logger.info(
+            "KhataEntry created successfully | id=%s total_bill=%s balance=%s",
+            created.id,
+            created.total_bill,
+            created.balance,
+        )
+
+        return self._attach_computed_fields(created)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # UPDATE PAYMENT  (additive — partial or full settlement)
+    # GET ALL ENTRIES
     # ─────────────────────────────────────────────────────────────────────────
-    def update_payment(self, entry_id: str, user_id: str, cash_received: float):
+
+    def get_all_entries(self, user_id: str) -> list[KhataEntry]:
         """
-        Record an additional payment against an existing entry.
+        Fetch every KhataEntry owned by the authenticated user.
 
-        Payments are additive: new cash is added to entry.cash_received.
+        Args:
+            user_id (str): UUID of the authenticated user.
 
-        Returns
-        -------
-        KhataEntry  with remaining_balance and payment_status attached.
-        """
-        try:
-            entry = self.repo.get_entry(entry_id)
+        Returns:
+            list[KhataEntry]: Entries ordered newest first (may be empty).
 
-            if entry.user_id != user_id:
-                logger.warning(
-                    "Payment update denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.user_id,
-                )
-                raise AppException(
-                    status_code=403,
-                    detail="Access denied: this entry does not belong to you",
-                )
-
-            if entry.is_cleared:
-                raise AppException(
-                    status_code=400,
-                    detail="Entry is already fully cleared",
-                )
-
-            if cash_received <= 0:
-                raise AppException(
-                    status_code=400,
-                    detail="Payment amount must be greater than zero",
-                )
-
-            new_total_cash = round(float(entry.cash_received or 0) + cash_received, 2)
-
-            if new_total_cash > float(entry.total_bill):
-                raise AppException(
-                    status_code=400,
-                    detail=(
-                        f"Total cash ({new_total_cash}) would exceed "
-                        f"total bill ({entry.total_bill})"
-                    ),
-                )
-
-            entry.cash_received = new_total_cash
-            entry.balance       = round(float(entry.total_bill) - new_total_cash, 2)
-            entry.is_cleared    = entry.balance <= 0
-
-            saved = self.repo.save(entry)
-            logger.info(
-                "Payment updated: id=%s, customer=%s, new_cash=%.2f, "
-                "balance=%.2f, cleared=%s",
-                entry_id, entry.customer_name,
-                new_total_cash, entry.balance, entry.is_cleared,
-            )
-            return _attach_computed_fields(saved)
-
-        except (AppException, NotFoundException):
-            raise
-
-        except sqlalchemy.exc.IntegrityError as exc:
-            logger.error(
-                "IntegrityError on payment update: %s", exc, exc_info=True
-            )
-            raise AppException(
-                status_code=400,
-                detail="Database integrity error while updating payment.",
-            )
-
-        except Exception as exc:
-            logger.error("Update payment failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while updating payment: {exc}",
-            )
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # UPDATE ENTRY  (general field corrections / manual edits)
-    # ─────────────────────────────────────────────────────────────────────────
-    def update_entry(self, entry_id: str, user_id: str, data: dict):
-        """
-        Update editable fields on a Khata entry.
-
-        Returns
-        -------
-        KhataEntry  with remaining_balance and payment_status attached.
-        """
-        try:
-            entry = self.repo.get_entry(entry_id)
-
-            if entry.user_id != user_id:
-                logger.warning(
-                    "Update denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.user_id,
-                )
-                raise AppException(
-                    status_code=403,
-                    detail="Access denied: this entry does not belong to you",
-                )
-
-            updated = self.repo.update_entry(entry, data)
-            logger.info(
-                "Entry updated: id=%s, customer=%s, balance=%.2f, cleared=%s",
-                entry_id, updated.customer_name, updated.balance, updated.is_cleared,
-            )
-            return _attach_computed_fields(updated)
-
-        except (AppException, NotFoundException):
-            raise
-
-        except sqlalchemy.exc.IntegrityError as exc:
-            logger.error(
-                "IntegrityError on entry update: %s", exc, exc_info=True
-            )
-            raise AppException(
-                status_code=400,
-                detail="Database integrity error while updating entry.",
-            )
-
-        except Exception as exc:
-            logger.error("Update entry failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while updating entry: {exc}",
-            )
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # GET ALL  (for one user — cleared entries remain visible)
-    # ─────────────────────────────────────────────────────────────────────────
-    def get_all_entries(self, user_id: str):
-        """
-        Return every Khata entry belonging to the authenticated user.
-
-        Returns
-        -------
-        list[KhataEntry]  each with remaining_balance and payment_status attached.
+        Raises:
+            AppException: 500 on unexpected failure.
         """
         try:
             entries = self.repo.get_all_entries(user_id)
-            logger.debug(
-                "Fetched %d entries for user_id=%s", len(entries), user_id
+
+            for entry in entries:
+                self._attach_computed_fields(entry)
+
+            logger.info(
+                "get_all_entries | user_id=%s count=%d",
+                user_id,
+                len(entries),
             )
-            return [_attach_computed_fields(e) for e in entries]
+            return entries
+
+        except AppException:
+            raise   # already formatted — let it propagate
 
         except Exception as exc:
-            logger.error("Get all entries failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while fetching entries: {exc}",
+            logger.error(
+                "get_all_entries unexpected error | user_id=%s error=%s",
+                user_id,
+                repr(exc),
+                exc_info=True,
             )
+            raise AppException(500, "Failed to fetch entries")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # GET ONE
+    # GET ONE ENTRY
     # ─────────────────────────────────────────────────────────────────────────
-    def get_entry(self, entry_id: str, user_id: str):
+
+    def get_entry(self, entry_id: str, user_id: str) -> KhataEntry:
         """
-        Fetch a single entry, verifying it belongs to the requesting user.
+        Fetch a single KhataEntry, enforcing user ownership.
 
-        Returns
-        -------
-        KhataEntry  with remaining_balance and payment_status attached.
+        Args:
+            entry_id (str): UUID of the entry to fetch.
+            user_id  (str): UUID of the authenticated user.
+
+        Returns:
+            KhataEntry: The matched entry with computed fields.
+
+        Raises:
+            AppException: 404 if not found, 500 on unexpected failure.
         """
         try:
-            entry = self.repo.get_entry(entry_id)
+            entry = self.repo.get_entry(
+                entry_id = entry_id,
+                user_id  = user_id,
+            )
+            logger.info(
+                "get_entry | entry_id=%s user_id=%s",
+                entry_id,
+                user_id,
+            )
+            return self._attach_computed_fields(entry)
 
-            if entry.user_id != user_id:
-                logger.warning(
-                    "Get entry denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.user_id,
-                )
-                raise AppException(
-                    status_code=403,
-                    detail="Access denied: this entry does not belong to you",
-                )
+        except NotFoundException:
+            raise AppException(404, "Khata entry not found")
 
-            return _attach_computed_fields(entry)
+        except AppException:
+            raise   # 500 from repo — let it propagate as-is
 
-        except (AppException, NotFoundException):
+        except Exception as exc:
+            logger.error(
+                "get_entry unexpected error | entry_id=%s error=%s",
+                entry_id,
+                repr(exc),
+                exc_info=True,
+            )
+            raise AppException(500, "Failed to fetch entry")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # UPDATE ENTRY  (field corrections)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def update_entry(
+        self,
+        entry_id: str,
+        user_id:  str,
+        data:     dict,
+    ) -> KhataEntry:
+        """
+        Apply partial field corrections to an existing KhataEntry.
+
+        After updating, balance and is_cleared are automatically recalculated
+        from the final total_bill and cash_received values.
+
+        Args:
+            entry_id (str):  UUID of the entry to update.
+            user_id  (str):  UUID of the authenticated user.
+            data     (dict): Non-None fields to overwrite (from KhataUpdate).
+
+        Returns:
+            KhataEntry: Updated entry with computed fields.
+
+        Raises:
+            AppException: 404 if not found, 400/500 on other errors.
+        """
+        try:
+            entry = self.repo.get_entry(
+                entry_id = entry_id,
+                user_id  = user_id,
+            )
+
+            # Merge updates, then recalculate derived billing fields.
+            updated = self.repo.update_entry(entry, data)
+
+            # ── Recalculate balance from final persisted values ────────────────
+            total_bill    = _to_float(updated.total_bill)
+            cash_received = _to_float(updated.cash_received)
+            new_balance   = round(total_bill - cash_received, 2)
+
+            updated = self.repo.update_entry(updated, {
+                "balance":    new_balance,
+                "is_cleared": new_balance <= 0,
+            })
+
+            logger.info(
+                "KhataEntry updated | id=%s new_balance=%s",
+                updated.id,
+                new_balance,
+            )
+            return self._attach_computed_fields(updated)
+
+        except NotFoundException:
+            raise AppException(404, "Khata entry not found")
+
+        except AppException:
             raise
 
         except Exception as exc:
-            logger.error("Get entry failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while fetching entry: {exc}",
+            logger.error(
+                "update_entry unexpected error | entry_id=%s error=%s",
+                entry_id,
+                repr(exc),
+                exc_info=True,
             )
+            raise AppException(500, "Failed to update entry")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # DELETE  (only allowed once fully cleared; hard delete)
+    # RECORD PAYMENT  (additive)
     # ─────────────────────────────────────────────────────────────────────────
-    def delete_entry(self, entry_id: str, user_id: str):
+
+    def update_payment(
+        self,
+        entry_id:      str,
+        user_id:       str,
+        cash_received: float,
+    ) -> KhataEntry:
         """
-        Permanently delete a Khata entry.
+        Add an incremental payment to an existing KhataEntry.
 
-        Deletion is only permitted when is_cleared=True.
+        The supplied cash_received is ADDED to the existing total, not
+        replacing it. Once balance reaches zero, is_cleared is set True.
+
+        Args:
+            entry_id      (str):   UUID of the entry.
+            user_id       (str):   UUID of the authenticated user.
+            cash_received (float): New payment amount (must be > 0).
+
+        Returns:
+            KhataEntry: Updated entry with computed fields.
+
+        Raises:
+            AppException: 400 if already cleared, 404 if not found,
+                          500 on unexpected failure.
         """
         try:
-            entry = self.repo.get_entry(entry_id)
+            entry = self.repo.get_entry(
+                entry_id = entry_id,
+                user_id  = user_id,
+            )
 
-            if entry.user_id != user_id:
-                logger.warning(
-                    "Delete denied: entry_id=%s, user_id=%s, owner=%s",
-                    entry_id, user_id, entry.user_id,
-                )
-                raise AppException(
-                    status_code=403,
-                    detail="Access denied: this entry does not belong to you",
-                )
+            if entry.is_cleared:
+                raise AppException(400, "Entry is already fully cleared")
+
+            # Accumulate cash and recalculate
+            new_cash    = round(_to_float(entry.cash_received) + _to_float(cash_received), 2)
+            total_bill  = _to_float(entry.total_bill)
+            new_balance = round(total_bill - new_cash, 2)
+
+            updated = self.repo.update_entry(entry, {
+                "cash_received": new_cash,
+                "balance":       new_balance,
+                "is_cleared":    new_balance <= 0,
+            })
+
+            logger.info(
+                "Payment recorded | id=%s added=%s new_balance=%s cleared=%s",
+                updated.id,
+                cash_received,
+                new_balance,
+                updated.is_cleared,
+            )
+            return self._attach_computed_fields(updated)
+
+        except NotFoundException:
+            raise AppException(404, "Khata entry not found")
+
+        except AppException:
+            raise
+
+        except Exception as exc:
+            logger.error(
+                "update_payment unexpected error | entry_id=%s error=%s",
+                entry_id,
+                repr(exc),
+                exc_info=True,
+            )
+            raise AppException(500, "Failed to record payment")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # DELETE ENTRY
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def delete_entry(self, entry_id: str, user_id: str) -> bool:
+        """
+        Hard-delete a KhataEntry — only permitted when fully cleared.
+
+        Args:
+            entry_id (str): UUID of the entry to delete.
+            user_id  (str): UUID of the authenticated user.
+
+        Returns:
+            bool: True on success.
+
+        Raises:
+            AppException: 400 if not cleared, 404 if not found,
+                          500 on unexpected failure.
+        """
+        try:
+            entry = self.repo.get_entry(
+                entry_id = entry_id,
+                user_id  = user_id,
+            )
 
             if not entry.is_cleared:
                 raise AppException(
-                    status_code=400,
-                    detail=(
-                        f"Cannot delete: balance of {entry.balance} PKR is still pending. "
-                        "Clear the balance first."
-                    ),
+                    400,
+                    "Cannot delete an entry with an outstanding balance — "
+                    "record full payment first via /payment endpoint",
                 )
 
             result = self.repo.delete_entry(entry)
+
             logger.info(
-                "Entry deleted: id=%s, customer=%s, user_id=%s",
-                entry_id, entry.customer_name, user_id,
+                "KhataEntry deleted | id=%s user_id=%s",
+                entry_id,
+                user_id,
             )
             return result
 
-        except (AppException, NotFoundException):
+        except NotFoundException:
+            raise AppException(404, "Khata entry not found")
+
+        except AppException:
             raise
 
         except Exception as exc:
-            logger.error("Delete entry failed: %s", exc, exc_info=True)
-            raise AppException(
-                status_code=500,
-                detail=f"Unexpected error while deleting entry: {exc}",
+            logger.error(
+                "delete_entry unexpected error | entry_id=%s error=%s",
+                entry_id,
+                repr(exc),
+                exc_info=True,
             )
+            raise AppException(500, "Failed to delete entry")

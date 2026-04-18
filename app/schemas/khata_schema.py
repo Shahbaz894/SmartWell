@@ -1,6 +1,7 @@
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from datetime import date as DateType
 from typing import Optional, Literal
+from datetime import date
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -115,30 +116,51 @@ class KhataPayment(BaseModel):
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RESPONSE
-# ─────────────────────────────────────────────────────────────────────────────
+# # ─────────────────────────────────────────────────────────────────────────────
+# class KhataResponse(BaseModel):
+
 class KhataResponse(BaseModel):
-    """
-    Response schema.
-
-    remaining_balance  — mirrors balance; computed in service layer.
-    payment_status     — "paid" | "partial" | "unpaid"; computed in service layer.
-    Both are NOT stored in the DB — they are attached to the ORM object
-    dynamically before returning from each service method.
-    """
-
     id: str
-    user_id: Optional[str]
+    user_id: str
     customer_name: str
     device_id: str
     motor_log_id: Optional[str]
-    date: DateType
+
+    date: date
     run_hours: float
     price_per_hour: float
+
     total_bill: float
     cash_received: float
     balance: float
     is_cleared: bool
-    remaining_balance: Optional[float] = None          # computed, not stored
-    payment_status: Optional[str] = None               # computed, not stored
+
+    remaining_balance: Optional[float] = None
+    payment_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+    # """
+    # Response schema.
+
+    # remaining_balance  — mirrors balance; computed in service layer.
+    # payment_status     — "paid" | "partial" | "unpaid"; computed in service layer.
+    # Both are NOT stored in the DB — they are attached to the ORM object
+    # dynamically before returning from each service method.
+    # """
+
+    # id: str
+    # user_id: Optional[str]
+    # customer_name: str
+    # device_id: str
+    # motor_log_id: Optional[str]
+    # date: DateType
+    # run_hours: float
+    # price_per_hour: float
+    # total_bill: float
+    # cash_received: float
+    # balance: float
+    # is_cleared: bool
+    # remaining_balance: Optional[float] = None          # computed, not stored
+    # payment_status: Optional[str] = None               # computed, not stored
+
+    # model_config = ConfigDict(from_attributes=True)

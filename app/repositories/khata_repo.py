@@ -1,12 +1,11 @@
 # app/repositories/khata_repo.py
 #
 # Data-access layer for KhataEntry.
-# All SQL operations live here; zero business logic.
 #
-# ── Naming Convention ─────────────────────────────────────────────────────────
-#  KhataEntry.user_id  = tube-well owner's user ID (from JWT).
-#  All queries filter by user_id — ownership checks are the service's job.
-# ──────────────────────────────────────────────────────────────────────────────
+# KEY FIX: All ID values cast to str() before DB filters.
+# User.id may be uuid.UUID (as_uuid=True) while KhataEntry uses String
+# columns — mixing types causes psycopg2 DataError at the DB level.
+# NotFoundException raised OUTSIDE try/except so it always propagates cleanly.
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,214 +17,242 @@ from app.core.exceptions import AppException, NotFoundException
 
 class KhataRepository:
     """
-    Repository for KhataEntry persistence.
+    Repository for KhataEntry persistence operations.
 
-    All methods raise AppException on SQLAlchemy errors and
-    NotFoundException when a requested record does not exist.
-    Business validation belongs in KhataService, not here.
+    Args:
+        db (Session): SQLAlchemy session injected via FastAPI Depends.
     """
 
     def __init__(self, db: Session):
         self.db = db
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CREATE
+    # PRIVATE HELPERS
     # ─────────────────────────────────────────────────────────────────────────
-    def create_entry(self, entry: KhataEntry) -> KhataEntry:
-        """
-        Persist a new KhataEntry and return the refreshed object.
 
-        Rolls back the transaction on any SQLAlchemy error to keep
-        the session clean for subsequent operations.
+    def _safe_query(self, operation_name: str, query_fn):
+        """
+        Execute a query callable, roll back and raise AppException on failure.
+
+        Rolling back on every SQLAlchemyError ensures the session is never
+        left in a broken/unusable state for subsequent requests.
+
+        Args:
+            operation_name (str): Label used in log messages.
+            query_fn (callable):  Zero-argument callable that runs the query.
+
+        Returns:
+            Any: Whatever query_fn returns.
+
+        Raises:
+            AppException: 500 on any SQLAlchemyError.
         """
         try:
-            self.db.add(entry)
-            self.db.commit()
-            self.db.refresh(entry)
-            logger.info(
-                "KhataEntry created | id=%s user_id=%s customer=%s "
-                "total_bill=%s balance=%s is_cleared=%s",
-                entry.id, entry.user_id, entry.customer_name,
-                entry.total_bill, entry.balance, entry.is_cleared,
-            )
-            return entry
+            return query_fn()
         except SQLAlchemyError as exc:
             self.db.rollback()
             logger.error(
-                "DB error creating KhataEntry for customer=%s: %s",
-                entry.customer_name, exc, exc_info=True,
+                "DB error [%s]: %s",
+                operation_name,
+                repr(exc),      # repr() shows full class + message
+                exc_info=True,
             )
-            raise AppException(
-                f"Database error: failed to create khata entry "
-                f"for '{entry.customer_name}'"
-            )
+            raise AppException(500, f"Database error during {operation_name}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CREATE
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def create_entry(self, entry: KhataEntry) -> KhataEntry:
+        """
+        Persist a new KhataEntry to the database.
+
+        Args:
+            entry (KhataEntry): Fully populated ORM object (id already set).
+
+        Returns:
+            KhataEntry: Refreshed, persisted entry.
+
+        Raises:
+            AppException: 500 on database failure.
+        """
+        def _run():
+            self.db.add(entry)
+            self.db.commit()
+            self.db.refresh(entry)
+            return entry
+
+        created = self._safe_query("create_entry", _run)
+        logger.info(
+            "KhataEntry created | id=%s user_id=%s customer=%s total_bill=%s",
+            created.id, created.user_id, created.customer_name, created.total_bill,
+        )
+        return created
 
     # ─────────────────────────────────────────────────────────────────────────
     # GET ONE
     # ─────────────────────────────────────────────────────────────────────────
-    def get_entry(self, entry_id: str) -> KhataEntry:
-        """
-        Fetch a single KhataEntry by primary key.
 
-        Raises NotFoundException when no row matches.
-        Ownership checks are the caller's responsibility.
+    def get_entry(self, entry_id: str, user_id: str) -> KhataEntry:
         """
-        try:
-            entry = (
+        Fetch a single KhataEntry scoped to the owning user.
+
+        Security: user_id filter prevents cross-user data access.
+        Both IDs cast to str() — safe when User.id is uuid.UUID object.
+
+        Args:
+            entry_id (str): UUID of the KhataEntry.
+            user_id  (str): UUID of the authenticated user (from JWT).
+
+        Returns:
+            KhataEntry: The matched entry.
+
+        Raises:
+            AppException:      500 on database failure.
+            NotFoundException: if no entry matches (entry_id + user_id).
+        """
+        # Query inside safe wrapper
+        entry = self._safe_query(
+            "get_entry",
+            lambda: (
                 self.db.query(KhataEntry)
-                .filter(KhataEntry.id == entry_id)
+                .filter(
+                    KhataEntry.id      == str(entry_id),  # str() type safety
+                    KhataEntry.user_id == str(user_id),   # str() type safety
+                )
                 .first()
+            ),
+        )
+
+        # Not-found check OUTSIDE try/except — propagates cleanly to service
+        if entry is None:
+            logger.warning(
+                "KhataEntry not found | entry_id=%s user_id=%s",
+                entry_id, user_id,
             )
-            if not entry:
-                logger.warning("KhataEntry not found: id=%s", entry_id)
-                raise NotFoundException(f"Khata entry not found: {entry_id}")
-            return entry
-        except NotFoundException:
-            raise
-        except SQLAlchemyError as exc:
-            logger.error(
-                "DB error fetching KhataEntry id=%s: %s",
-                entry_id, exc, exc_info=True,
-            )
-            raise AppException(
-                f"Database error: failed to fetch khata entry {entry_id}"
-            )
+            raise NotFoundException(f"Khata entry not found: {entry_id}")
+
+        logger.debug("KhataEntry fetched | id=%s user_id=%s", entry.id, entry.user_id)
+        return entry
 
     # ─────────────────────────────────────────────────────────────────────────
-    # GET ALL  (by owner — cleared entries included)
+    # GET ALL
     # ─────────────────────────────────────────────────────────────────────────
+
     def get_all_entries(self, user_id: str) -> list[KhataEntry]:
         """
-        Return all KhataEntry rows where user_id matches.
+        Return all KhataEntry rows for a user, newest first.
 
-        Rows are ordered newest-first.
-        Cleared entries (is_cleared=True) are NOT excluded here;
-        the service/frontend layer handles any UI-level filtering.
+        Args:
+            user_id (str): UUID of the authenticated user.
+
+        Returns:
+            list[KhataEntry]: Possibly empty list.
+
+        Raises:
+            AppException: 500 on database failure.
         """
-        try:
-            entries = (
+        entries = self._safe_query(
+            "get_all_entries",
+            lambda: (
                 self.db.query(KhataEntry)
-                .filter(KhataEntry.user_id == user_id)
+                .filter(KhataEntry.user_id == str(user_id))  # str() type safety
                 .order_by(KhataEntry.created_at.desc())
                 .all()
-            )
-            logger.info(
-                "Fetched %d KhataEntries for user_id=%s",
-                len(entries), user_id,
-            )
-            return entries
-        except SQLAlchemyError as exc:
-            logger.error(
-                "DB error fetching KhataEntries for user_id=%s: %s",
-                user_id, exc, exc_info=True,
-            )
-            raise AppException(
-                f"Database error: failed to fetch entries for user {user_id}"
-            )
+            ),
+        )
+        logger.debug(
+            "KhataEntry list fetched | user_id=%s count=%d",
+            user_id, len(entries),
+        )
+        return entries
 
     # ─────────────────────────────────────────────────────────────────────────
-    # SAVE  (used after in-memory mutations — e.g. update_payment)
+    # SAVE
     # ─────────────────────────────────────────────────────────────────────────
+
     def save(self, entry: KhataEntry) -> KhataEntry:
         """
-        Commit changes to an already-tracked (dirty) KhataEntry.
+        Commit pending changes on an already-tracked ORM object.
 
-        The caller mutates the object fields; this method flushes
-        those changes to the database and refreshes the instance.
+        Args:
+            entry (KhataEntry): Dirty ORM object in session identity map.
+
+        Returns:
+            KhataEntry: Refreshed entry after commit.
+
+        Raises:
+            AppException: 500 on database failure.
         """
-        try:
+        def _run():
             self.db.commit()
             self.db.refresh(entry)
-            logger.info(
-                "KhataEntry saved | id=%s customer=%s balance=%s is_cleared=%s",
-                entry.id, entry.customer_name, entry.balance, entry.is_cleared,
-            )
             return entry
-        except SQLAlchemyError as exc:
-            self.db.rollback()
-            logger.error(
-                "DB error saving KhataEntry id=%s: %s",
-                entry.id, exc, exc_info=True,
-            )
-            raise AppException(
-                f"Database error: failed to save khata entry {entry.id}"
-            )
+
+        saved = self._safe_query("save", _run)
+        logger.debug("KhataEntry saved | id=%s", saved.id)
+        return saved
 
     # ─────────────────────────────────────────────────────────────────────────
-    # UPDATE  (general field-level update with balance recalculation)
+    # UPDATE
     # ─────────────────────────────────────────────────────────────────────────
+
     def update_entry(self, entry: KhataEntry, data: dict) -> KhataEntry:
         """
-        Apply a dict of field updates to a KhataEntry and persist.
+        Apply a partial field dict to an entry and commit.
 
-        After applying all field changes, balance and is_cleared are
-        recalculated from the current total_bill and cash_received values.
+        Only keys that exist on KhataEntry with non-None values are applied.
 
-        Parameters
-        ----------
-        entry : KhataEntry  The tracked ORM instance to mutate.
-        data  : dict        Key-value pairs for allowed fields (from KhataUpdate).
+        Args:
+            entry (KhataEntry): Entry to mutate (already loaded from DB).
+            data  (dict):       Partial field map e.g. {"customer_name": "Ali"}.
+
+        Returns:
+            KhataEntry: Refreshed entry after commit.
+
+        Raises:
+            AppException: 500 on database failure.
         """
-        try:
-            for key, value in data.items():
-                if hasattr(entry, key) and value is not None:
-                    setattr(entry, key, value)
-                    logger.debug(
-                        "Field updated: %s → %s on entry %s", key, value, entry.id
-                    )
+        for key, value in data.items():
+            if hasattr(entry, key) and value is not None:
+                setattr(entry, key, value)
 
-            # Recalculate derived fields after any change
-            total = float(entry.total_bill    or 0)
-            cash  = float(entry.cash_received or 0)
-
-            entry.balance    = round(total - cash, 2)
-            entry.is_cleared = entry.balance <= 0
-
+        def _run():
             self.db.commit()
             self.db.refresh(entry)
-            logger.info(
-                "KhataEntry updated | id=%s customer=%s balance=%s is_cleared=%s",
-                entry.id, entry.customer_name, entry.balance, entry.is_cleared,
-            )
             return entry
-        except SQLAlchemyError as exc:
-            self.db.rollback()
-            logger.error(
-                "DB error updating KhataEntry id=%s: %s",
-                entry.id, exc, exc_info=True,
-            )
-            raise AppException(
-                f"Database error: failed to update khata entry {entry.id}"
-            )
+
+        updated = self._safe_query("update_entry", _run)
+        logger.info(
+            "KhataEntry updated | id=%s fields=%s",
+            updated.id, list(data.keys()),
+        )
+        return updated
 
     # ─────────────────────────────────────────────────────────────────────────
-    # DELETE  (permanent; only called after is_cleared guard in service)
+    # DELETE
     # ─────────────────────────────────────────────────────────────────────────
+
     def delete_entry(self, entry: KhataEntry) -> bool:
         """
-        Hard-delete a KhataEntry from the database.
+        Hard-delete a KhataEntry. Caller must verify is_cleared first.
 
-        The service layer must verify is_cleared=True before calling this.
-        This method performs no business validation.
+        Args:
+            entry (KhataEntry): Entry to delete (already loaded from DB).
 
-        Returns
-        -------
-        bool  True on success.
+        Returns:
+            bool: True on success.
+
+        Raises:
+            AppException: 500 on database failure.
         """
-        try:
+        entry_id = entry.id  # capture before SQLAlchemy clears post-delete
+
+        def _run():
             self.db.delete(entry)
             self.db.commit()
-            logger.info(
-                "KhataEntry deleted | id=%s customer=%s",
-                entry.id, entry.customer_name,
-            )
             return True
-        except SQLAlchemyError as exc:
-            self.db.rollback()
-            logger.error(
-                "DB error deleting KhataEntry id=%s: %s",
-                entry.id, exc, exc_info=True,
-            )
-            raise AppException(
-                f"Database error: failed to delete khata entry {entry.id}"
-            )
+
+        result = self._safe_query("delete_entry", _run)
+        logger.info("KhataEntry deleted | id=%s", entry_id)
+        return result
