@@ -46,6 +46,8 @@ class DeviceUpdate(BaseModel):
     sim_number    : Optional[str]   = None
     location      : Optional[str]   = None
     reference_freq: Optional[float] = None
+   
+    
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ class DeviceResponse(BaseModel):
     sim_number  : Optional[str]
     location    : Optional[str]
     created_at  : Optional[datetime]
+   
 
     class Config:
         from_attributes = True
