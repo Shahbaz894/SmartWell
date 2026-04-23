@@ -1,392 +1,669 @@
-docker build -t shahbaz/smartwell:v1 . && 
-docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest && 
-docker push shahbazzulfiqar/smartwell:latest
-
 # IoT Tube Well Management System Backend
 
-A production-ready backend for an **IoT based Tube Well Motor Control System**.  
-The system allows users to remotely control a tube well motor, schedule automatic motor operation, and maintain customer **Khata (accounting records)**.
+A production-ready backend for an **IoT-based Tube Well Motor Control System**.
 
-The backend is built using **FastAPI**, **PostgreSQL**, and **MQTT** for reliable communication with ESP32 devices.
+This system allows users to:
 
----
+- Remotely start and stop a tube well motor
+- Schedule automatic motor operation
+- Manage customer **Khata** records
+- Track motor activity and usage logs
+- Communicate with ESP32 devices over MQTT
 
-# Features
+The backend is built with:
 
-## Motor Control
-- Start / Stop motor from mobile app
-- Near real-time control
-- Motor state logging
-- Track run duration automatically
-
-## Smart Scheduling
-Supports advanced automation:
-
-- Monthly pattern scheduling  
-  Example:
-  - 7 days ON
-  - 3 days OFF
-  - 5 days ON
-
-- Daily time slots  
-  Example:
-  - 08:00 → 12:00
-  - 14:00 → 16:00
-
-Background scheduler automatically triggers motor based on these rules.
+- **FastAPI**
+- **PostgreSQL**
+- **MQTT**
+- **Docker**
+- **DigitalOcean Droplet**
 
 ---
 
-## Khata (Customer Accounting)
+# Table of Contents
 
-Tracks motor usage and billing.
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [System Architecture](#system-architecture)
+- [Environment Variables](#environment-variables)
+- [Local Development Setup](#local-development-setup)
+- [Docker Build and Push](#docker-build-and-push)
+- [DigitalOcean Production Deployment](#digitalocean-production-deployment)
+- [Full Production Setup Commands](#full-production-setup-commands)
+- [How to Update Code and Deploy New Version](#how-to-update-code-and-deploy-new-version)
+- [How to Stop, Remove, and Recreate Containers](#how-to-stop-remove-and-recreate-containers)
+- [Useful Docker Commands](#useful-docker-commands)
+- [API Endpoints](#api-endpoints)
+- [MQTT Communication](#mqtt-communication)
+- [Health Check and Docs](#health-check-and-docs)
+- [Logging](#logging)
+- [Security](#security)
+- [Scalability](#scalability)
+- [Troubleshooting](#troubleshooting)
+- [Author](#author)
+- [License](#license)
 
-Each record stores:
+---
 
-- Customer name
-- Motor run hours
-- Price per hour
-- Total bill
-- Cash received
-- Remaining balance
-- Payment cleared status
+# Overview
+
+The **IoT Tube Well Management System Backend** is designed for remote motor control and automation in tube well systems.
+
+It supports:
+
+- direct motor start and stop from a mobile application
+- smart time-based and pattern-based scheduling
+- MQTT messaging with ESP32 devices
+- customer billing and Khata record management
+- usage monitoring and motor activity logs
+
+This backend is suitable for deployment on a **DigitalOcean droplet** using Docker containers.
+
+---
+
+# Main Features
+
+## 1. Motor Control
+
+- Start motor remotely
+- Stop motor remotely
+- Track motor running state
+- Save motor activity logs
+- Calculate run duration automatically
+
+## 2. Smart Scheduling
+
+Supports advanced motor automation, including:
+
+- monthly pattern scheduling
+- daily time-slot scheduling
+- automatic scheduler execution
+- repeated ON and OFF cycle control
+
+### Example scheduling patterns
+
+- 7 days ON, 3 days OFF
+- 5 days ON, 2 days OFF
+
+### Example daily time slots
+
+- 08:00 to 12:00
+- 14:00 to 16:00
+
+## 3. Khata Management
+
+Tracks customer usage and billing details.
+
+Each record can include:
+
+- customer name
+- motor run hours
+- price per hour
+- total bill
+- cash received
+- remaining balance
+- payment cleared status
 
 Users can:
 
-- Add entry
-- Edit entry
-- Delete entry
+- add records
+- update records
+- delete records
+- view account history
+
+## 4. IoT Integration
+
+- communicates with ESP32 devices
+- sends motor control commands over MQTT
+- supports reliable message delivery through broker-based communication
 
 ---
 
 # Technology Stack
 
-Backend framework  
-- FastAPI
+## Backend
 
-Database  
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- Uvicorn
+
+## Database
+
 - PostgreSQL
 
-ORM  
-- SQLAlchemy
+## Communication
 
-Validation  
-- Pydantic
-
-IoT communication  
 - MQTT
-
-Authentication  
-- JWT
-
-Device hardware  
-- ESP32 + SIM800L
-
-Package manager  
-- uv
-
----
-
-# Project Architecture
-
-The project follows **Clean Architecture** with separation of responsibilities.
-
-
-app/
-│
-├── core/
-│ ├── config.py
-│ ├── logger.py
-│ └── exceptions.py
-│
-├── db/
-│ ├── session.py
-│ └── migrations/
-│
-├── models/
-│ ├── user.py
-│ ├── device.py
-│ ├── motor_log.py
-│ ├── schedule.py
-│ ├── customer.py
-│ └── khata_entry.py
-│
-├── schemas/
-│ ├── user_schema.py
-│ ├── device_schema.py
-│ ├── motor_schema.py
-│ ├── schedule_schema.py
-│ ├── customer_schema.py
-│ └── khata_schema.py
-│
-├── repositories/
-│ ├── user_repo.py
-│ ├── device_repo.py
-│ ├── motor_repo.py
-│ ├── schedule_repo.py
-│ ├── customer_repo.py
-│ └── khata_repo.py
-│
-├── services/
-│ ├── auth_service.py
-│ ├── device_service.py
-│ ├── motor_service.py
-│ ├── schedule_service.py
-│ └── khata_service.py
-│
-├── api/
-│ ├── auth_routes.py
-│ ├── device_routes.py
-│ ├── motor_routes.py
-│ ├── schedule_routes.py
-│ └── khata_routes.py
-│
-├── workers/
-│ └── scheduler_worker.py
-│
-└── mqtt/
-└── mqtt_client.py
-
-
----
-
-# System Architecture
-
-
-Flutter Mobile App
-│
-│ REST API
-▼
-FastAPI Backend
-│
-├── PostgreSQL Database
-│
-├── MQTT Broker
-│ │
-│ ▼
-│ ESP32 Device
-│
-└── Background Scheduler
-
-
----
-
-# Installation
-
-## Clone the repository
-
-
-git clone https://github.com/your-repo/iot-tubewell-backend.git
-
-cd iot-tubewell-backend
-
-
----
-
-## Create virtual environment
-
-Using **uv**
-
-
-uv venv
-
-
-Activate environment
-
-Linux / Mac
-
-
-source .venv/bin/activate
-
-
-Windows
-
-
-.venv\Scripts\activate
-
-
----
-
-## Install dependencies
-
-
-uv pip install -r requirements.txt
-
-
----
-
-# Environment Variables
-
-Create `.env`
-
-
-DATABASE_URL=postgresql://user:password@localhost/tubewell
-
-JWT_SECRET=your_secret_key
-
-MQTT_BROKER=localhost
-
-MQTT_PORT=1883
-
-
----
-
-# Run the Server
-
-
-uvicorn app.main:app --reload
-
-
-API will run at
-
-
-http://localhost:8000
-
-
-Swagger documentation
-
-
-http://localhost:8000/docs
-
-
----
-
-# Running the Scheduler
-
-The scheduler checks automation rules every minute.
-
-
-python -m app.workers.scheduler_worker
-
-
----
-
-# MQTT Communication
-
-ESP32 subscribes to:
-
-
-tubewell/{device_uid}/motor
-
-
-Example message
-
-
-{
-"command": "ON"
-}
-
-
-or
-
-
-{
-"command": "OFF"
-}
-
-
----
-
-# API Endpoints
+- Eclipse Mosquitto
 
 ## Authentication
 
+- JWT
 
+## Package Management
+
+- uv
+
+## Containerization
+
+- Docker
+- Docker Hub
+
+## Deployment
+
+- DigitalOcean Droplet
+
+## Hardware
+
+- ESP32
+- SIM800L
+
+---
+
+# Project Structure
+
+```text
+app/
+├── api/
+│   ├── auth_routes.py
+│   ├── device_routes.py
+│   ├── khata_routes.py
+│   ├── motor_routes.py
+│   └── schedule_routes.py
+│
+├── core/
+│   ├── config.py
+│   ├── exceptions.py
+│   └── logger.py
+│
+├── db/
+│   ├── session.py
+│   └── migrations/
+│
+├── models/
+│   ├── customer.py
+│   ├── device.py
+│   ├── khata_entry.py
+│   ├── motor_log.py
+│   ├── schedule.py
+│   └── user.py
+│
+├── mqtt/
+│   └── mqtt_client.py
+│
+├── repositories/
+│   ├── customer_repo.py
+│   ├── device_repo.py
+│   ├── khata_repo.py
+│   ├── motor_repo.py
+│   ├── schedule_repo.py
+│   └── user_repo.py
+│
+├── schemas/
+│   ├── customer_schema.py
+│   ├── device_schema.py
+│   ├── khata_schema.py
+│   ├── motor_schema.py
+│   ├── schedule_schema.py
+│   └── user_schema.py
+│
+├── services/
+│   ├── auth_service.py
+│   ├── device_service.py
+│   ├── khata_service.py
+│   ├── motor_service.py
+│   └── schedule_service.py
+│
+├── workers/
+│   └── scheduler_worker.py
+│
+└── main.py
+Root-Level Files
+.
+├── app/
+├── .env
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── pyproject.toml
+├── README.md
+└── .gitignore
+System Architecture
+Flutter Mobile App
+        │
+        │ REST API
+        ▼
+FastAPI Backend
+        │
+        ├── PostgreSQL Database
+        │
+        ├── MQTT Broker (Mosquitto)
+        │         │
+        │         ▼
+        │      ESP32 Device
+        │
+        └── Background Scheduler
+Environment Variables
+
+Create a .env file in the project root.
+
+Example .env
+DATABASE_URL=postgresql://shahbaz_admin:shahbaz_password@db:5432/smartwell_db
+JWT_SECRET=your_secret_key
+MQTT_BROKER=iot_project_mosquitto_1
+MQTT_PORT=1883
+Important Note
+
+In Docker production, the database hostname must match the actual running container name on the Docker network.
+
+For example, if PostgreSQL container name is:
+
+db
+
+Then DATABASE_URL must use:
+
+@db:5432
+
+Do not use:
+
+localhost
+127.0.0.1
+old container names like iot_project_db_1
+Local Development Setup
+1. Clone the repository
+git clone https://github.com/your-repo/iot-tubewell-backend.git
+cd iot-tubewell-backend
+2. Create virtual environment
+uv venv
+3. Activate virtual environment
+Linux or Mac
+source .venv/bin/activate
+Windows
+.venv\Scripts\activate
+4. Install dependencies
+uv pip install -r requirements.txt
+5. Run the FastAPI server
+uvicorn app.main:app --reload
+6. Open in browser
+
+API base URL:
+
+http://localhost:8000
+
+Swagger docs:
+
+http://localhost:8000/docs
+Docker Build and Push
+
+When you update your Python code and want to deploy the latest version, first build a new Docker image and push it to Docker Hub.
+
+Build image locally
+docker build -t shahbaz/smartwell:v1 .
+Tag image for Docker Hub
+docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
+Push image to Docker Hub
+docker push shahbazzulfiqar/smartwell:latest
+DigitalOcean Production Deployment
+
+This section explains the exact production workflow on a DigitalOcean droplet.
+
+1. Connect to droplet using SSH
+ssh root@157.245.55.83
+2. Go to project directory
+cd /root/iot_project
+
+If the project folder does not exist yet:
+
+mkdir -p /root/iot_project
+cd /root/iot_project
+Full Production Setup Commands
+
+Use these commands when setting up the project from scratch on the droplet.
+
+1. Create Docker network
+docker network create iot_project_smartwell_net
+
+If the network already exists, Docker will show an error. That is okay.
+
+2. Run PostgreSQL container
+docker run -d --name db \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -v iot_project_postgres_data:/var/lib/postgresql/data \
+  -e POSTGRES_USER=shahbaz_admin \
+  -e POSTGRES_PASSWORD=shahbaz_password \
+  -e POSTGRES_DB=smartwell_db \
+  postgres:15
+3. Run Mosquitto container
+docker run -d --name iot_project_mosquitto_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 1883:1883 \
+  eclipse-mosquitto
+4. Create .env file
+nano /root/iot_project/.env
+
+Paste:
+
+DATABASE_URL=postgresql://shahbaz_admin:shahbaz_password@db:5432/smartwell_db
+JWT_SECRET=your_secret_key
+MQTT_BROKER=iot_project_mosquitto_1
+MQTT_PORT=1883
+
+Save and exit.
+
+5. Pull latest backend image from Docker Hub
+docker pull shahbazzulfiqar/smartwell:latest
+6. Run backend container
+docker run -d --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:latest
+7. Check running containers
+docker ps
+8. Check backend logs
+docker logs -f iot_project_backend_1
+9. Check database logs
+docker logs db
+10. Verify restart policies
+docker inspect -f '{{ .HostConfig.RestartPolicy.Name }}' db
+docker inspect -f '{{ .HostConfig.RestartPolicy.Name }}' iot_project_backend_1
+docker inspect -f '{{ .HostConfig.RestartPolicy.Name }}' iot_project_mosquitto_1
+
+Expected output:
+
+unless-stopped
+How to Update Code and Deploy New Version
+
+Whenever you change your Python code, follow this process.
+
+Step 1. Make code changes locally
+
+Update your FastAPI code on your development machine.
+
+Step 2. Build a new Docker image
+docker build -t shahbaz/smartwell:v1 .
+
+You can also use version tags:
+
+docker build -t shahbaz/smartwell:v2 .
+Step 3. Tag the image for Docker Hub
+docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
+
+Or with versioned tag:
+
+docker tag shahbaz/smartwell:v2 shahbazzulfiqar/smartwell:v2
+docker tag shahbaz/smartwell:v2 shahbazzulfiqar/smartwell:latest
+Step 4. Push image to Docker Hub
+docker push shahbazzulfiqar/smartwell:latest
+
+If using version tags:
+
+docker push shahbazzulfiqar/smartwell:v2
+docker push shahbazzulfiqar/smartwell:latest
+Step 5. Connect to DigitalOcean droplet
+ssh root@157.245.55.83
+Step 6. Pull the latest image on droplet
+docker pull shahbazzulfiqar/smartwell:latest
+Step 7. Remove old backend container
+docker rm -f iot_project_backend_1
+Step 8. Start backend again with latest image
+docker run -d --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:latest
+Step 9. Watch logs
+docker logs -f iot_project_backend_1
+How to Stop, Remove, and Recreate Containers
+Stop a container
+docker stop iot_project_backend_1
+Start a stopped container
+docker start iot_project_backend_1
+Remove a container forcefully
+docker rm -f iot_project_backend_1
+Remove database container
+docker rm -f db
+Remove mosquitto container
+docker rm -f iot_project_mosquitto_1
+Remove all three containers
+docker rm -f iot_project_backend_1 db iot_project_mosquitto_1
+Remove image
+docker rmi shahbazzulfiqar/smartwell:latest
+Remove volume
+docker volume rm iot_project_postgres_data
+
+Warning: removing the PostgreSQL volume deletes all database data permanently.
+
+Clean Re-Deployment From Scratch
+
+Use this when you want to erase everything and start fresh.
+
+1. Remove backend, database, and broker containers
+docker rm -f iot_project_backend_1 db iot_project_mosquitto_1
+2. Remove PostgreSQL volume
+docker volume rm iot_project_postgres_data
+3. Remove backend image if needed
+docker rmi shahbazzulfiqar/smartwell:latest
+4. Pull latest image again
+docker pull shahbazzulfiqar/smartwell:latest
+5. Recreate containers
+Database
+docker run -d --name db \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -v iot_project_postgres_data:/var/lib/postgresql/data \
+  -e POSTGRES_USER=shahbaz_admin \
+  -e POSTGRES_PASSWORD=shahbaz_password \
+  -e POSTGRES_DB=smartwell_db \
+  postgres:15
+MQTT broker
+docker run -d --name iot_project_mosquitto_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 1883:1883 \
+  eclipse-mosquitto
+Backend
+docker run -d --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:latest
+Docker Compose Workflow
+
+If you prefer Docker Compose, use the following commands.
+
+Stop and wipe everything
+docker-compose down -v
+Rebuild backend with no cache
+docker-compose build --no-cache backend
+Start services
+docker-compose up -d
+
+Use this method only if you are actually managing the project with docker-compose.yml.
+
+If you are deploying by manual docker run commands, do not mix both methods unless you know exactly what is running.
+
+Useful Docker Commands
+Show all running containers
+docker ps
+Show all containers including stopped ones
+docker ps -a
+Show container logs
+docker logs iot_project_backend_1
+docker logs db
+docker logs iot_project_mosquitto_1
+Follow logs live
+docker logs -f iot_project_backend_1
+Inspect environment values
+docker inspect db --format='{{range .Config.Env}}{{println .}}{{end}}'
+Check backend environment
+docker exec -it iot_project_backend_1 printenv
+Open shell inside backend container
+docker exec -it iot_project_backend_1 sh
+Check Docker network
+docker network inspect iot_project_smartwell_net
+Pull latest backend image
+docker pull shahbazzulfiqar/smartwell:latest
+API Endpoints
+Authentication
 POST /auth/register
 POST /auth/login
-
-
-## Devices
-
-
+Devices
 POST /devices
 GET /devices
-
-
-## Motor
-
-
+Motor
 POST /motor/start
 POST /motor/stop
-
-
-## Schedule
-
-
+Schedule
 POST /schedule
 GET /schedule/{device_id}
-
-
-## Khata
-
-
+Khata
 POST /khata
 DELETE /khata/{id}
+MQTT Communication
 
+ESP32 devices subscribe to the following topic format:
 
----
+tubewell/{device_uid}/motor
+Example ON command
+{
+  "command": "ON"
+}
+Example OFF command
+{
+  "command": "OFF"
+}
+Health Check and Docs
+Health endpoint
+curl http://localhost/
 
-# Logging
+Expected response:
 
-All system activity is logged:
+{"status":"online","message":"IoT TubeWell Backend is running"}
+Swagger documentation
 
-- motor start
-- motor stop
-- schedule execution
-- errors
+Open:
 
-Logs help monitor the IoT system.
+http://localhost/docs
 
----
+Or from public server:
 
-# Security
+http://YOUR_SERVER_IP/docs
+Logging
 
-- JWT authentication
-- User data isolation
-- Device ownership verification
-- Secure API endpoints
+The system logs important events such as:
 
----
+motor start
+motor stop
+schedule execution
+background job activity
+database initialization issues
+API errors
 
-# Scalability
+Use Docker logs for production monitoring:
 
-Designed to support:
+docker logs -f iot_project_backend_1
+Security
+JWT authentication
+protected API routes
+device ownership validation
+isolated database-backed user records
+containerized deployment for better isolation
+Production Recommendations
+use a strong JWT_SECRET
+restrict SSH access
+use firewall rules on DigitalOcean
+expose port 1883 only if required externally
+use HTTPS with Nginx reverse proxy if going public
+Scalability
 
-- 10,000+ users
-- multiple devices per user
-- large motor log datasets
+The backend is designed to support:
 
-Can be deployed on:
+many users
+multiple devices per user
+large motor log datasets
+scheduled automation workloads
 
-- Railway
-- DigitalOcean
-- AWS
-- VPS servers
+This project can be deployed on:
 
----
+DigitalOcean
+AWS
+Railway
+VPS servers
+other Linux cloud environments
+Troubleshooting
+1. Backend fails with database initialization error
 
-# Future Improvements
+Check:
 
-Possible upgrades:
+docker logs iot_project_backend_1
+docker logs db
 
-- Redis caching
-- WebSocket real-time updates
-- Advanced analytics dashboard
-- SMS alerts
-- AI irrigation optimization
+Make sure .env contains the correct database hostname:
 
----
+DATABASE_URL=postgresql://shahbaz_admin:shahbaz_password@db:5432/smartwell_db
+2. Container name conflict
 
-# License
+Example error:
 
-MIT License
+Conflict. The container name "/db" is already in use
 
----
+Fix:
 
-# Author
+docker rm -f db
+
+Then recreate container.
+
+3. Backend cannot connect to database
+
+Check the Docker network:
+
+docker network inspect iot_project_smartwell_net
+
+Make sure both containers are attached to the same network.
+
+4. Latest code not showing in production
+
+This usually means the latest image was not built or pulled.
+
+Run:
+
+docker build -t shahbaz/smartwell:v1 .
+docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
+docker push shahbazzulfiqar/smartwell:latest
+
+ssh root@157.245.55.83
+docker pull shahbazzulfiqar/smartwell:latest
+docker rm -f iot_project_backend_1
+docker run -d --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:latest
+5. PostgreSQL data reset required
+
+To fully reset database data:
+
+docker rm -f db
+docker volume rm iot_project_postgres_data
+
+Then recreate the database container.
+
+Warning: this deletes all saved database data.
+
+Author
 
 Developed by:
 
-**Shahbaz**
+Shahbaz
 
-IoT + Embedded Systems Engineer
+IoT and Embedded Systems Engineer

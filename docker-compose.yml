@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database for your SmartWell sensor data
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: shahbaz_admin
+      POSTGRES_PASSWORD: shahbaz_password  # You can change this, but keep it same in backend
+      POSTGRES_DB: smartwell_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - smartwell_net
+
+  # 2. Mosquitto MQTT Broker for your ESP32
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto_broker
+    restart: always
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - smartwell_net
+
+  # 3. Your FastAPI SmartWell Backend
+  backend:
+    image: shahbazzulfiqar/smartwell:latest
+    container_name: fastapi_backend
+    restart: always
+    ports:
+      - "80:8000"
+    depends_on:
+      - db
+      - mosquitto
+    environment:
+      # Use 'db' as the host name because they are in the same network
+      DATABASE_URL: postgresql://shahbaz_admin:shahbaz_password@db:5432/smartwell_db
+      MQTT_BROKER: mosquitto
+    networks:
+      - smartwell_net
+
+networks:
+  smartwell_net:
+    driver: bridge
+
+volumes:
+  postgres_data:

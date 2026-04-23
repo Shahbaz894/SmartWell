@@ -24,6 +24,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from app.db.base import Base  # This now contains all your models!
+from app.db.session import engine
 
 import app.db.base_class
 from app.api import (

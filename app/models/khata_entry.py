@@ -16,6 +16,7 @@ from sqlalchemy import (
     Column, String, TIMESTAMP, Numeric,
     Boolean, ForeignKey, Date, text
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
@@ -27,33 +28,27 @@ class KhataEntry(Base):
     # ─────────────────────────────────────────────────────────────────────────
     # Primary Key
     # ─────────────────────────────────────────────────────────────────────────
-    id = Column(
-        String,
-        primary_key=True,
-        default=lambda: str(uuid.uuid4())
-    )
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Foreign Keys for project
-    # ─────────────────────────────────────────────────────────────────────────
-
-    # Tube-well owner — always set from JWT, never from request body
+    # FIX: Must be UUID to match User.id
     user_id = Column(
-        String,
+        UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
 
+    # FIX: Must be UUID to match Device.id
     device_id = Column(
-        String,
+        UUID(as_uuid=True),
         ForeignKey("devices.id", ondelete="CASCADE"),
         nullable=False
     )
 
+    # FIX: Assuming MotorLog.id is also a UUID
     motor_log_id = Column(
-        String,
+        UUID(as_uuid=True),
         ForeignKey("motor_logs.id", ondelete="SET NULL"),
-        nullable=True   # nullable — run_hours can be entered manually
+        nullable=True
     )
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -118,3 +113,4 @@ class KhataEntry(Base):
             f"balance={self.balance} "
             f"cleared={self.is_cleared}>"
         )
+    device = relationship("Device", back_populates="khata_entries")
