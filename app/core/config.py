@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # MQTT_COMMAND_TOPIC_PREFIX: str = "smartwell/devices"
     # MQTT_TELEMETRY_TOPIC_PREFIX: str = "smartwell/devices"
     # MQTT_TELEMETRY_TOPIC_SUFFIX: str = "telemetry"
+    MQTT_BROKER: str = "mosquitto"
+    MQTT_PORT: int = 1883
+    MQTT_KEEPALIVE: int = 60
+    MQTT_CLIENT_ID: str = "smartwell-backend"
+    MQTT_COMMAND_TOPIC_PREFIX: str = "tubewell"
 
     # ─────────────────────────────
     # OPTIONAL HTTP

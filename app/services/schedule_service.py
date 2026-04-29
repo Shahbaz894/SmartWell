@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException, NotFoundException
 from app.core.logger import logger
+from app.models.device import Device
 from app.models.schedule import Schedule
 from app.repositories.schedule_repo import ScheduleRepository
 from app.schemas.schedule_schema import ScheduleCreate
@@ -15,14 +16,14 @@ from app.services.motor_service import MotorService
 
 class ScheduleService:
     """
-    Service layer for schedule operations.
+    Service layer for device schedules.
 
-    Responsibilities:
-    - Create or update one schedule per device
-    - Get schedule by device
-    - Delete schedule by device
-    - Run background schedule checks
-    - Start and stop motor through HTTP-based MotorService
+    MQTT design:
+    - ScheduleService does not publish MQTT directly.
+    - ScheduleService calls MotorService.
+    - MotorService publishes MQTT commands to ESP32.
+    - ESP32 receives ON or OFF on:
+        tubewell/{device_uid}/motor
     """
 
     def __init__(self, db: Session):
@@ -30,21 +31,35 @@ class ScheduleService:
         self.repo = ScheduleRepository(db)
         self.motor_service = MotorService(db)
 
+    def _get_device(self, device_id: str) -> Device:
+        """
+        Validate that a device exists before schedule operation.
+        """
+        device = self.db.query(Device).filter(Device.id == device_id).first()
+
+        if not device:
+            logger.warning("Schedule device not found: device_id=%s", device_id)
+            raise AppException(
+                status_code=404,
+                detail=f"Device '{device_id}' not found",
+            )
+
+        return device
+
     def create_schedule(self, device_id: str, schedule_in: ScheduleCreate) -> Schedule:
         """
-        Create or update a device schedule.
-
-        Args:
-            device_id: Device identifier
-            schedule_in: Validated schedule input
-
-        Returns:
-            Schedule: Created or updated schedule row
-
-        Raises:
-            AppException: For database or unexpected errors
+        Create or update one schedule for a device.
         """
         try:
+            device = self._get_device(device_id)
+
+            logger.info(
+                "Creating schedule: device_id=%s device_uid=%s schedule_type=%s",
+                device_id,
+                device.device_uid,
+                schedule_in.schedule_type,
+            )
+
             schedule = Schedule(
                 id=str(uuid.uuid4()),
                 device_id=device_id,
@@ -57,10 +72,12 @@ class ScheduleService:
             saved = self.repo.create_or_update(schedule)
 
             logger.info(
-                "Schedule created or updated successfully: device_id=%s, schedule_id=%s",
-                saved.device_id,
+                "Schedule saved: schedule_id=%s device_id=%s device_uid=%s",
                 saved.id,
+                device_id,
+                device.device_uid,
             )
+
             return saved
 
         except AppException:
@@ -68,109 +85,98 @@ class ScheduleService:
 
         except SQLAlchemyError as exc:
             logger.error(
-                "Database error while creating schedule: device_id=%s, error=%s",
+                "Schedule DB error: device_id=%s db_error=%s",
                 device_id,
-                exc,
+                str(exc.orig) if hasattr(exc, "orig") else str(exc),
                 exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail=f"Database error while creating schedule for device '{device_id}'",
+                detail=f"Database error while creating schedule: {str(exc.orig) if hasattr(exc, 'orig') else str(exc)}",
             )
 
         except Exception as exc:
             logger.error(
-                "Unexpected error while creating schedule: device_id=%s, error=%s",
+                "Schedule unexpected error: device_id=%s error_type=%s error=%s",
                 device_id,
-                exc,
+                type(exc).__name__,
+                str(exc),
                 exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail="Failed to create schedule",
+                detail=f"Unexpected error while creating schedule: {type(exc).__name__}: {str(exc)}",
             )
 
     def get_schedule(self, device_id: str) -> Schedule:
         """
-        Fetch schedule for a device.
-
-        Args:
-            device_id: Device identifier
-
-        Returns:
-            Schedule: Stored schedule for the device
-
-        Raises:
-            NotFoundException: If schedule does not exist
-            AppException: On unexpected error
+        Fetch schedule for one device.
         """
         try:
+            self._get_device(device_id)
+
             schedule = self.repo.get_by_device(device_id)
 
             if not schedule:
-                logger.warning("No schedule found: device_id=%s", device_id)
-                raise NotFoundException(
-                    detail=f"No schedule found for device '{device_id}'"
+                raise AppException(
+                    status_code=404,
+                    detail=f"No schedule found for device '{device_id}'",
                 )
 
-            logger.info("Schedule fetched successfully: device_id=%s", device_id)
             return schedule
 
-        except (AppException, NotFoundException):
+        except AppException:
             raise
 
         except Exception as exc:
             logger.error(
-                "Unexpected error while fetching schedule: device_id=%s, error=%s",
+                "Schedule fetch error: device_id=%s error_type=%s error=%s",
                 device_id,
-                exc,
+                type(exc).__name__,
+                str(exc),
                 exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail="Failed to fetch schedule",
+                detail=f"Failed to fetch schedule: {type(exc).__name__}: {str(exc)}",
             )
 
     def delete_schedule(self, device_id: str) -> None:
         """
-        Delete schedule for a device.
-
-        Args:
-            device_id: Device identifier
-
-        Raises:
-            NotFoundException: If schedule does not exist
-            AppException: On database or unexpected error
+        Delete schedule for one device.
         """
         try:
+            self._get_device(device_id)
             self.repo.delete(device_id)
 
-            logger.info("Schedule deleted successfully: device_id=%s", device_id)
+            logger.info("Schedule deleted: device_id=%s", device_id)
 
         except (AppException, NotFoundException):
             raise
 
         except Exception as exc:
             logger.error(
-                "Unexpected error while deleting schedule: device_id=%s, error=%s",
+                "Schedule delete error: device_id=%s error_type=%s error=%s",
                 device_id,
-                exc,
+                type(exc).__name__,
+                str(exc),
                 exc_info=True,
             )
             raise AppException(
                 status_code=500,
-                detail="Failed to delete schedule",
+                detail=f"Failed to delete schedule: {type(exc).__name__}: {str(exc)}",
             )
 
     def check_and_run(self) -> None:
         """
-        Background scheduler logic.
+        Background schedule checker.
 
-        Rules:
-        - Fetch all active schedules
-        - Check whether current UTC time matches today's slots
-        - Start motor if schedule says it should run and motor is not running
-        - Stop motor if schedule says it should stop and running log was started by schedule
+        This method:
+        - Reads active schedules.
+        - Checks current UTC time.
+        - Calls MotorService.start_motor().
+        - Calls MotorService.stop_motor().
+        - MotorService sends MQTT command to ESP32.
         """
         try:
             schedules = self.repo.get_active_schedules()
@@ -180,45 +186,46 @@ class ScheduleService:
             today_day = now_dt.day
 
             logger.info(
-                "Schedule check started: active_schedule_count=%s, utc_time=%s",
+                "Schedule check started: count=%s utc_time=%s",
                 len(schedules),
                 now_dt.isoformat(),
             )
 
             for schedule in schedules:
                 try:
+                    device = self._get_device(schedule.device_id)
+
                     slots = self._extract_today_slots(schedule.pattern, today_day)
                     should_run = self._should_run_now(slots, now_time)
-
                     is_running = self.motor_service.is_motor_running(schedule.device_id)
 
+                    logger.info(
+                        "Schedule checked: device_id=%s device_uid=%s should_run=%s is_running=%s",
+                        schedule.device_id,
+                        device.device_uid,
+                        should_run,
+                        is_running,
+                    )
+
                     if should_run and not is_running:
-                        logger.info(
-                            "Schedule triggered motor start: device_id=%s",
-                            schedule.device_id,
-                        )
                         self.motor_service.start_motor(
                             device_id=schedule.device_id,
                             trigger_type="schedule",
-                            operator_name="Schedule",
+                            customer_name="Schedule",
                         )
 
                     elif not should_run and is_running:
                         running_log = self.motor_service.get_running_log(schedule.device_id)
 
                         if running_log and running_log.trigger_type == "schedule":
-                            logger.info(
-                                "Schedule triggered motor stop: device_id=%s",
-                                schedule.device_id,
-                            )
                             self.motor_service.stop_motor(
                                 device_id=schedule.device_id,
-                                operator_name="Schedule",
+                                customer_name="Schedule",
                             )
 
                 except AppException as exc:
                     logger.error(
-                        "Schedule execution error for device_id=%s: %s",
+                        "Schedule execution AppException: device_id=%s detail=%s",
                         schedule.device_id,
                         getattr(exc, "detail", str(exc)),
                         exc_info=True,
@@ -226,41 +233,33 @@ class ScheduleService:
 
                 except Exception as exc:
                     logger.error(
-                        "Unexpected schedule execution error for device_id=%s: %s",
+                        "Schedule execution error: device_id=%s error_type=%s error=%s",
                         schedule.device_id,
-                        exc,
+                        type(exc).__name__,
+                        str(exc),
                         exc_info=True,
                     )
 
-        except SQLAlchemyError as exc:
-            logger.error(
-                "Database error during schedule check: %s",
-                exc,
-                exc_info=True,
-            )
-
         except Exception as exc:
             logger.error(
-                "Unexpected schedule cron error: %s",
-                exc,
+                "Schedule cron error: error_type=%s error=%s",
+                type(exc).__name__,
+                str(exc),
                 exc_info=True,
             )
 
     def _extract_today_slots(self, pattern: dict[str, Any], today_day: int) -> list[dict]:
         """
-        Extract today's schedule slots from stored pattern.
-
-        Supported pattern types:
-        - monthly
-        - monthly_custom
-
-        Args:
-            pattern: Stored schedule pattern JSON
-            today_day: Current day of month
-
-        Returns:
-            list[dict]: List of time slots for today
+        Extract today's slots from schedule pattern.
         """
+        if not isinstance(pattern, dict):
+            logger.error(
+                "Invalid schedule pattern: expected=dict actual=%s value=%s",
+                type(pattern).__name__,
+                pattern,
+            )
+            return []
+
         schedule_type = pattern.get("type")
         slots: list[dict] = []
 
@@ -271,18 +270,26 @@ class ScheduleService:
         elif schedule_type == "monthly_custom":
             slots = pattern.get("days", {}).get(str(today_day), [])
 
+        else:
+            logger.warning(
+                "Unknown schedule type: type=%s pattern=%s",
+                schedule_type,
+                pattern,
+            )
+
+        if not isinstance(slots, list):
+            logger.error(
+                "Invalid slots format: expected=list actual=%s value=%s",
+                type(slots).__name__,
+                slots,
+            )
+            return []
+
         return slots
 
     def _should_run_now(self, slots: list[dict], now_time: time) -> bool:
         """
-        Return True if current time falls inside any provided slot.
-
-        Args:
-            slots: List of schedule slots
-            now_time: Current UTC time
-
-        Returns:
-            bool: True if device should run now, otherwise False
+        Check if current UTC time is inside a schedule slot.
         """
         for slot in slots:
             try:
@@ -294,9 +301,10 @@ class ScheduleService:
 
             except (KeyError, ValueError, TypeError) as exc:
                 logger.error(
-                    "Invalid schedule slot format: slot=%s, error=%s",
+                    "Invalid slot: slot=%s error_type=%s error=%s",
                     slot,
-                    exc,
+                    type(exc).__name__,
+                    str(exc),
                     exc_info=True,
                 )
 

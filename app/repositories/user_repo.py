@@ -47,3 +47,31 @@ class UserRepository:
         except SQLAlchemyError as e:
             logger.error("Failed to fetch user by id %s: %s", user_id, str(e))
             raise AppException(f"Database error: failed to fetch user by id {user_id}")
+        
+        
+    def get_all_users(self):
+        try:
+            users = self.db.query(User).order_by(User.created_at.desc()).all()
+            logger.info("Fetched all users: count=%s", len(users))
+            return users
+        except SQLAlchemyError as e:
+            logger.error("Failed to fetch users: %s", str(e))
+            raise AppException("Database error: failed to fetch users")
+
+    def delete_user(self, user_id: str):
+        try:
+            user = self.get_user_by_id(user_id)
+
+            self.db.delete(user)
+            self.db.commit()
+
+            logger.info("Deleted user: id=%s", user_id)
+            return True
+
+        except NotFoundException:
+            raise
+
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error("Failed to delete user %s: %s", user_id, str(e))
+            raise AppException("Database error: failed to delete user")

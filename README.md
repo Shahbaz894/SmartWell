@@ -1,3 +1,6 @@
+
+
+docker build -t shahbazzulfiqar/smartwell:latest .
 # IoT Tube Well Management System Backend
 
 A production-ready backend for an **IoT-based Tube Well Motor Control System**.
@@ -395,6 +398,7 @@ docker build -t shahbaz/smartwell:v2 .
 Step 3. Tag the image for Docker Hub
 docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
 
+
 Or with versioned tag:
 
 docker tag shahbaz/smartwell:v2 shahbazzulfiqar/smartwell:v2
@@ -438,6 +442,22 @@ Remove image
 docker rmi shahbazzulfiqar/smartwell:latest
 Remove volume
 docker volume rm iot_project_postgres_data
+
+
+
+
+Your DB and Mosquitto containers have different names now:
+
+1406e53817ed_iot_project_db_1
+9a9b0e277ed3_iot_project_mosquitto_1
+
+Start them with these exact commands:
+
+docker start 1406e53817ed_iot_project_db_1
+docker start 9a9b0e277ed3_iot_project_mosquitto_1
+
+
+
 
 Warning: removing the PostgreSQL volume deletes all database data permanently.
 

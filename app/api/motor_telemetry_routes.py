@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException, NotFoundException
@@ -9,29 +9,31 @@ from app.core.logger import logger
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.motor_telemetry_schema import MotorTelemetryCreate, MotorTelemetryResponse
+from app.schemas.motor_telemetry_schema import (
+    MotorTelemetryCreate,
+    MotorTelemetryResponse,
+)
 from app.services.motor_telemetry_service import MotorTelemetryService
 
-router = APIRouter(
-    prefix="/telemetry",
-    tags=["Motor Telemetry"],
-)
+router = APIRouter(prefix="/telemetry", tags=["Motor Telemetry"])
 
 
 def get_service():
-    """
-    Provide a fresh telemetry service instance per request.
-    """
     return MotorTelemetryService()
 
 
-# ─── ESP32 Public Ingestion (no JWT required) ────────────────────────────────
+def _raise_http_error(exc: AppException):
+    raise HTTPException(
+        status_code=getattr(exc, "status_code", 500),
+        detail=getattr(exc, "detail", str(exc)),
+    )
+
 
 @router.post(
     "/{device_id}",
     response_model=MotorTelemetryResponse,
-    status_code=201,
-    summary="Ingest telemetry from ESP32 device",
+    status_code=status.HTTP_201_CREATED,
+    summary="HTTP test ingestion for telemetry",
 )
 def create_telemetry(
     device_id: str,
@@ -40,62 +42,52 @@ def create_telemetry(
     service: MotorTelemetryService = Depends(get_service),
 ):
     """
-    Ingest a telemetry packet from an ESP32 device (no auth required).
+    Store telemetry through HTTP.
 
-    The ESP32 sends either a live packet (is_live=1) or an offline
-    EEPROM-buffered packet (is_live=0) to this endpoint over HTTP.
+    MQTT note:
+    ESP32 should normally publish telemetry to:
+        tubewell/{device_uid}/telemetry
 
-    Args:
-        device_id: Unique device identifier passed as a path parameter.
-        payload:   Validated telemetry payload from the request body.
-        db:        Active SQLAlchemy session (injected).
-        service:   Telemetry service instance (injected).
-
-    Returns:
-        MotorTelemetryResponse: The persisted telemetry record (HTTP 201).
-
-    Raises:
-        AppException (422): If payload validation fails (handled by Pydantic).
-        AppException (500): On any database or unexpected server error.
+    This endpoint is kept for Swagger, curl, and debugging only.
     """
-    logger.info(
-        "Telemetry ingestion requested: device_id=%s, is_live=%s",
-        device_id,
-        payload.is_live,
-    )
-
     try:
         created = service.create_telemetry(db, device_id, payload)
 
         logger.info(
-            "Telemetry ingested successfully: device_id=%s, telemetry_id=%s",
+            "HTTP telemetry API create success: device_id=%s telemetry_id=%s",
             device_id,
             created.id,
         )
+
         return created
 
-    except AppException:
-        raise
+    except AppException as exc:
+        logger.error(
+            "HTTP telemetry API create failed: device_id=%s detail=%s",
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
 
     except Exception as exc:
         logger.error(
-            "Unexpected error ingesting telemetry: device_id=%s, error=%s",
+            "HTTP telemetry API unexpected create error: device_id=%s error_type=%s error=%s",
             device_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(
+        raise HTTPException(
             status_code=500,
-            detail="Failed to ingest telemetry",
+            detail=f"Unexpected telemetry create error: {type(exc).__name__}: {str(exc)}",
         )
 
-
-# ─── Authenticated Dashboard Endpoints ───────────────────────────────────────
 
 @router.get(
     "/{device_id}/latest",
     response_model=Optional[MotorTelemetryResponse],
-    summary="Get latest live telemetry for a device",
+    summary="Get latest live telemetry",
 )
 def get_latest_live_telemetry(
     device_id: str,
@@ -104,49 +96,52 @@ def get_latest_live_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Return the most recent live telemetry packet for a device.
+    Return latest live telemetry saved in PostgreSQL.
 
-    NOTE: This route must stay above /{device_id} GET to prevent
-    FastAPI from matching the literal string 'latest' as a device_id.
-
-    Args:
-        device_id: Unique device identifier passed as a path parameter.
-        db:        Active SQLAlchemy session (injected).
-        service:   Telemetry service instance (injected).
-        user:      Authenticated user from JWT (injected).
-
-    Returns:
-        MotorTelemetryResponse or None if no live record exists.
+    It does not read directly from MQTT.
+    MQTT subscriber stores telemetry first, then this route reads DB.
     """
-    logger.info(
-        "Latest live telemetry requested: user_id=%s, device_id=%s",
-        user.id,
-        device_id,
-    )
-
     try:
-        return service.get_latest_live(db, device_id)
+        latest = service.get_latest_live(db, device_id)
 
-    except AppException:
-        raise
+        logger.info(
+            "Telemetry API latest success: user_id=%s device_id=%s found=%s",
+            user.id,
+            device_id,
+            latest is not None,
+        )
+
+        return latest
+
+    except AppException as exc:
+        logger.error(
+            "Telemetry API latest failed: user_id=%s device_id=%s detail=%s",
+            user.id,
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
 
     except Exception as exc:
         logger.error(
-            "Unexpected error fetching latest live telemetry: device_id=%s, error=%s",
+            "Telemetry API unexpected latest error: user_id=%s device_id=%s error_type=%s error=%s",
+            user.id,
             device_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(
+        raise HTTPException(
             status_code=500,
-            detail="Failed to fetch latest live telemetry",
+            detail=f"Unexpected latest telemetry error: {type(exc).__name__}: {str(exc)}",
         )
 
 
 @router.get(
     "/{device_id}",
     response_model=List[MotorTelemetryResponse],
-    summary="Get all telemetry records for a device",
+    summary="Get all telemetry records",
 )
 def get_device_telemetry(
     device_id: str,
@@ -155,45 +150,49 @@ def get_device_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Return all telemetry records for a device, newest first.
-
-    Args:
-        device_id: Unique device identifier passed as a path parameter.
-        db:        Active SQLAlchemy session (injected).
-        service:   Telemetry service instance (injected).
-        user:      Authenticated user from JWT (injected).
-
-    Returns:
-        List[MotorTelemetryResponse]: All telemetry records for the device.
+    Return stored telemetry records for dashboard.
     """
-    logger.info(
-        "Telemetry list requested: user_id=%s, device_id=%s",
-        user.id,
-        device_id,
-    )
-
     try:
-        return service.get_device_telemetry(db, device_id)
+        records = service.get_device_telemetry(db, device_id)
 
-    except AppException:
-        raise
+        logger.info(
+            "Telemetry API list success: user_id=%s device_id=%s count=%s",
+            user.id,
+            device_id,
+            len(records),
+        )
+
+        return records
+
+    except AppException as exc:
+        logger.error(
+            "Telemetry API list failed: user_id=%s device_id=%s detail=%s",
+            user.id,
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
 
     except Exception as exc:
         logger.error(
-            "Unexpected error fetching telemetry list: device_id=%s, error=%s",
+            "Telemetry API unexpected list error: user_id=%s device_id=%s error_type=%s error=%s",
+            user.id,
             device_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(
+        raise HTTPException(
             status_code=500,
-            detail="Failed to fetch telemetry records",
+            detail=f"Unexpected telemetry list error: {type(exc).__name__}: {str(exc)}",
         )
 
 
 @router.delete(
-    "/{telemetry_id}",
-    summary="Delete a telemetry record by ID",
+    "/record/{telemetry_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete telemetry record",
 )
 def delete_telemetry(
     telemetry_id: UUID,
@@ -202,46 +201,50 @@ def delete_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Delete a telemetry record by its UUID.
+    Delete one telemetry record.
 
-    Args:
-        telemetry_id: UUID of the telemetry record to delete.
-        db:           Active SQLAlchemy session (injected).
-        service:      Telemetry service instance (injected).
-        user:         Authenticated user from JWT (injected).
-
-    Returns:
-        dict: Confirmation message on successful deletion.
-
-    Raises:
-        NotFoundException (404): If the telemetry record does not exist.
-        AppException (500):      On any unexpected server error.
+    Route uses /record/{telemetry_id} to avoid conflict with /{device_id}.
     """
-    logger.info(
-        "Telemetry delete requested: user_id=%s, telemetry_id=%s",
-        user.id,
-        telemetry_id,
-    )
-
     try:
         deleted = service.delete_telemetry(db, telemetry_id)
 
         if not deleted:
             raise NotFoundException(detail="Telemetry not found")
 
-        return {"detail": "Telemetry deleted successfully"}
+        logger.info(
+            "Telemetry API delete success: user_id=%s telemetry_id=%s",
+            user.id,
+            telemetry_id,
+        )
 
-    except (AppException, NotFoundException):
-        raise
+        return {
+            "detail": "Telemetry deleted successfully",
+            "telemetry_id": str(telemetry_id),
+        }
+
+    except (AppException, NotFoundException) as exc:
+        logger.error(
+            "Telemetry API delete failed: user_id=%s telemetry_id=%s detail=%s",
+            user.id,
+            telemetry_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=getattr(exc, "status_code", 404),
+            detail=getattr(exc, "detail", str(exc)),
+        )
 
     except Exception as exc:
         logger.error(
-            "Unexpected error deleting telemetry: telemetry_id=%s, error=%s",
+            "Telemetry API unexpected delete error: user_id=%s telemetry_id=%s error_type=%s error=%s",
+            user.id,
             telemetry_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(
+        raise HTTPException(
             status_code=500,
-            detail="Failed to delete telemetry",
+            detail=f"Unexpected telemetry delete error: {type(exc).__name__}: {str(exc)}",
         )

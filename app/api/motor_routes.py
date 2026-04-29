@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
@@ -14,20 +14,35 @@ from app.services.motor_service import MotorService
 router = APIRouter(prefix="/motor", tags=["Motor"])
 
 
-@router.post("/{device_id}/start", response_model=MotorLogResponse)
+def _raise_http_error(exc: AppException):
+    raise HTTPException(
+        status_code=getattr(exc, "status_code", 500),
+        detail=getattr(exc, "detail", str(exc)),
+    )
+
+
+@router.post(
+    "/{device_id}/start",
+    response_model=MotorLogResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Start motor through MQTT",
+)
 def start_motor(
     device_id: str,
     payload: MotorStartRequest,
     db: Session = Depends(get_db),
 ):
     """
-    Start motor for a specific device.
+    Start motor for one device.
 
-    Path param:
-        device_id -> identifies the target device
+    MQTT flow:
+    API route calls MotorService.
+    MotorService saves motor log.
+    MotorService publishes MQTT command:
+        topic: tubewell/{device_uid}/motor
+        payload: {"command": "ON"}
 
-    Body:
-        trigger_type, customer_name
+    ESP32 receives this command from Mosquitto.
     """
     service = MotorService(db)
 
@@ -39,39 +54,56 @@ def start_motor(
         )
 
         logger.info(
-            "Motor start API success: device_id=%s, log_id=%s",
+            "Motor API start success: device_id=%s log_id=%s",
             device_id,
             motor_log.id,
         )
+
         return motor_log
 
-    except AppException:
-        raise
+    except AppException as exc:
+        logger.error(
+            "Motor API start failed: device_id=%s detail=%s",
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
 
     except Exception as exc:
         logger.error(
-            "Unexpected API error starting motor: device_id=%s, error=%s",
+            "Motor API unexpected start error: device_id=%s error_type=%s error=%s",
             device_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(status_code=500, detail="Internal server error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected motor start error: {type(exc).__name__}: {str(exc)}",
+        )
 
 
-@router.post("/{device_id}/stop", response_model=MotorLogResponse)
+@router.post(
+    "/{device_id}/stop",
+    response_model=MotorLogResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Stop motor through MQTT",
+)
 def stop_motor(
     device_id: str,
     payload: MotorStopRequest,
     db: Session = Depends(get_db),
 ):
     """
-    Stop motor for a specific device.
+    Stop motor for one device.
 
-    Path param:
-        device_id -> identifies the target device
-
-    Body:
-        customer_name
+    MQTT flow:
+    API route calls MotorService.
+    MotorService updates motor log.
+    MotorService publishes MQTT command:
+        topic: tubewell/{device_uid}/motor
+        payload: {"command": "OFF"}
     """
     service = MotorService(db)
 
@@ -82,25 +114,38 @@ def stop_motor(
         )
 
         if not motor_log:
-            logger.warning("No running motor found to stop: device_id=%s", device_id)
-            raise AppException(status_code=404, detail="No running motor found")
+            raise AppException(
+                status_code=404,
+                detail=f"No running motor found for device '{device_id}'",
+            )
 
         logger.info(
-            "Motor stop API success: device_id=%s, log_id=%s, duration=%s minutes",
+            "Motor API stop success: device_id=%s log_id=%s duration_minutes=%s",
             device_id,
             motor_log.id,
             motor_log.duration_minutes,
         )
+
         return motor_log
 
-    except AppException:
-        raise
+    except AppException as exc:
+        logger.error(
+            "Motor API stop failed: device_id=%s detail=%s",
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
 
     except Exception as exc:
         logger.error(
-            "Unexpected API error stopping motor: device_id=%s, error=%s",
+            "Motor API unexpected stop error: device_id=%s error_type=%s error=%s",
             device_id,
-            exc,
+            type(exc).__name__,
+            str(exc),
             exc_info=True,
         )
-        raise AppException(status_code=500, detail="Internal server error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected motor stop error: {type(exc).__name__}: {str(exc)}",
+        )

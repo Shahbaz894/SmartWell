@@ -19,13 +19,14 @@
 
 import asyncio
 from contextlib import asynccontextmanager
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from app.db.base import Base  # This now contains all your models!
 from app.db.session import engine
+from app.api import user_routes
 
 import app.db.base_class
 from app.api import (
@@ -141,9 +142,21 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://192.168.1.8:3000",
+        "http://157.245.55.83:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # ── Routers ───────────────────────────────────────────────────────────────────
 
+
+app.include_router(user_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(device_routes.router)
 app.include_router(motor_routes.router)
