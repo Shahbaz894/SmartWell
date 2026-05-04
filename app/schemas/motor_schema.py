@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
+from uuid import UUID  
+
 
 class MotorStartRequest(BaseModel):
     trigger_type: str  # manual or schedule
@@ -15,8 +17,8 @@ class MotorStopRequest(BaseModel):
 
 
 class MotorLogResponse(BaseModel):
-    id: str
-    device_id: str
+    id: UUID
+    device_id: UUID
     start_time: datetime
     end_time: Optional[datetime]
     duration_minutes: Optional[int]

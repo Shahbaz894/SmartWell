@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.core.exceptions import AppException
 from app.core.logger import logger
@@ -148,4 +149,128 @@ def stop_motor(
         raise HTTPException(
             status_code=500,
             detail=f"Unexpected motor stop error: {type(exc).__name__}: {str(exc)}",
+        )
+        
+        
+        
+@router.get(
+    "/{device_id}/logs",
+    response_model=List[MotorLogResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get motor logs by device",
+)
+def get_motor_logs(
+    device_id: str,
+    db: Session = Depends(get_db),
+):
+    service = MotorService(db)
+
+    try:
+        return service.get_motor_logs(device_id)
+
+    except AppException as exc:
+        logger.error(
+            "Motor logs get failed: device_id=%s detail=%s",
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
+
+    except Exception as exc:
+        logger.error(
+            "Motor logs unexpected get error: device_id=%s error_type=%s error=%s",
+            device_id,
+            type(exc).__name__,
+            str(exc),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected motor logs get error: {type(exc).__name__}: {str(exc)}",
+        )
+
+
+@router.delete(
+    "/logs/{log_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Delete one motor log",
+)
+def delete_motor_log(
+    log_id: str,
+    db: Session = Depends(get_db),
+):
+    service = MotorService(db)
+
+    try:
+        service.delete_motor_log(log_id)
+
+        return {
+            "detail": "Motor log deleted successfully",
+            "log_id": log_id,
+        }
+
+    except AppException as exc:
+        logger.error(
+            "Motor log delete failed: log_id=%s detail=%s",
+            log_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
+
+    except Exception as exc:
+        logger.error(
+            "Motor log unexpected delete error: log_id=%s error_type=%s error=%s",
+            log_id,
+            type(exc).__name__,
+            str(exc),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected motor log delete error: {type(exc).__name__}: {str(exc)}",
+        )
+
+
+@router.delete(
+    "/{device_id}/logs",
+    status_code=status.HTTP_200_OK,
+    summary="Clear all motor logs by device",
+)
+def clear_motor_logs(
+    device_id: str,
+    db: Session = Depends(get_db),
+):
+    service = MotorService(db)
+
+    try:
+        deleted_count = service.clear_motor_logs(device_id)
+
+        return {
+            "detail": "Motor logs cleared successfully",
+            "device_id": device_id,
+            "deleted_count": deleted_count,
+        }
+
+    except AppException as exc:
+        logger.error(
+            "Motor logs clear failed: device_id=%s detail=%s",
+            device_id,
+            getattr(exc, "detail", str(exc)),
+            exc_info=True,
+        )
+        _raise_http_error(exc)
+
+    except Exception as exc:
+        logger.error(
+            "Motor logs unexpected clear error: device_id=%s error_type=%s error=%s",
+            device_id,
+            type(exc).__name__,
+            str(exc),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected motor logs clear error: {type(exc).__name__}: {str(exc)}",
         )

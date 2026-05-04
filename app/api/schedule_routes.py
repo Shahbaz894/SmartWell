@@ -10,7 +10,7 @@ from app.services.schedule_service import ScheduleService
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
 
-def _raise_http_error(exc: AppException):
+def _raise_http_error(exc: AppException) -> None:
     raise HTTPException(
         status_code=getattr(exc, "status_code", 500),
         detail=getattr(exc, "detail", str(exc)),
@@ -40,6 +40,12 @@ def create_schedule(
     try:
         schedule = service.create_schedule(data.device_id, data)
 
+        if not schedule:
+            raise HTTPException(
+                status_code=500,
+                detail="Schedule could not be saved",
+            )
+
         logger.info(
             "Schedule API save success: device_id=%s schedule_id=%s",
             data.device_id,
@@ -56,6 +62,9 @@ def create_schedule(
             exc_info=True,
         )
         _raise_http_error(exc)
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         logger.error(
@@ -88,6 +97,12 @@ def get_schedule(
     try:
         schedule = service.get_schedule(device_id)
 
+        if not schedule:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found for device '{device_id}'",
+            )
+
         logger.info(
             "Schedule API get success: device_id=%s schedule_id=%s",
             device_id,
@@ -104,6 +119,9 @@ def get_schedule(
             exc_info=True,
         )
         _raise_http_error(exc)
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         logger.error(
@@ -136,7 +154,10 @@ def delete_schedule(
     try:
         service.delete_schedule(device_id)
 
-        logger.info("Schedule API delete success: device_id=%s", device_id)
+        logger.info(
+            "Schedule API delete success: device_id=%s",
+            device_id,
+        )
 
         return {
             "detail": "Schedule deleted successfully",
@@ -151,6 +172,9 @@ def delete_schedule(
             exc_info=True,
         )
         _raise_http_error(exc)
+
+    except HTTPException:
+        raise
 
     except Exception as exc:
         logger.error(

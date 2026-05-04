@@ -1,7 +1,11 @@
+
+
+
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from datetime import date as DateType
 from typing import Optional, Literal
 from datetime import date
+from uuid import UUID
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -11,36 +15,35 @@ class KhataCreate(BaseModel):
     """
     Input schema for creating a new Khata entry.
 
-    NOTE:
     user_id is NOT accepted from request body.
     It is always taken from authenticated JWT user.
 
+    price_per_hour may be 0 when the entry is created from motor stop.
+    The real price can be entered later from Khata screen.
+
     remaining_balance and payment_status are accepted in the request body
-    but are ignored — they are always computed server-side from
-    total_bill and cash_received.
+    but are ignored. They are computed server-side from total_bill and
+    cash_received.
     """
 
-    # Required
     customer_name: str
     device_id: str
-    price_per_hour: float
+    price_per_hour: float = 0.0
 
-    # Optional
     motor_log_id: Optional[str] = None
     cash_received: Optional[float] = 0.0
     date: Optional[DateType] = None
     run_hours: Optional[float] = None
-    total_bill: Optional[float] = None
+    total_bill: Optional[float] = 0.0
 
-    # Accepted but ignored — computed server-side
     remaining_balance: Optional[float] = None
     payment_status: Optional[Literal["paid", "partial", "unpaid"]] = None
 
     @field_validator("price_per_hour")
     @classmethod
-    def price_must_be_positive(cls, v: float):
-        if v <= 0:
-            raise ValueError("Price per hour must be greater than zero")
+    def price_not_negative(cls, v: float):
+        if v < 0:
+            raise ValueError("Price per hour cannot be negative")
         return v
 
     @field_validator("run_hours")
@@ -48,6 +51,13 @@ class KhataCreate(BaseModel):
     def run_hours_must_be_positive(cls, v):
         if v is not None and v <= 0:
             raise ValueError("run_hours must be greater than zero")
+        return v
+
+    @field_validator("total_bill")
+    @classmethod
+    def total_bill_not_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("total_bill cannot be negative")
         return v
 
     @field_validator("cash_received")
@@ -60,9 +70,7 @@ class KhataCreate(BaseModel):
     @model_validator(mode="after")
     def require_hours_source(self):
         if not self.run_hours and not self.motor_log_id:
-            raise ValueError(
-                "Provide either 'run_hours' or 'motor_log_id'"
-            )
+            raise ValueError("Provide either 'run_hours' or 'motor_log_id'")
         return self
 
 
@@ -71,7 +79,10 @@ class KhataCreate(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 class KhataUpdate(BaseModel):
     """
-    Update schema (partial updates allowed)
+    Update schema.
+
+    price_per_hour and total_bill may be 0 because newly created Khata
+    records can be pending until price is entered.
     """
 
     customer_name: Optional[str] = None
@@ -81,11 +92,18 @@ class KhataUpdate(BaseModel):
     cash_received: Optional[float] = None
     date: Optional[DateType] = None
 
-    @field_validator("price_per_hour", "run_hours", "total_bill")
+    @field_validator("run_hours")
     @classmethod
-    def must_be_positive(cls, v):
+    def run_hours_must_be_positive(cls, v):
         if v is not None and v <= 0:
-            raise ValueError("Value must be greater than zero")
+            raise ValueError("run_hours must be greater than zero")
+        return v
+
+    @field_validator("price_per_hour", "total_bill")
+    @classmethod
+    def value_not_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Value cannot be negative")
         return v
 
     @field_validator("cash_received")
@@ -101,7 +119,7 @@ class KhataUpdate(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 class KhataPayment(BaseModel):
     """
-    Add payment to existing record
+    Add payment to existing record.
     """
 
     cash_received: float
@@ -116,15 +134,13 @@ class KhataPayment(BaseModel):
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RESPONSE
-# # ─────────────────────────────────────────────────────────────────────────────
-# class KhataResponse(BaseModel):
-
+# ─────────────────────────────────────────────────────────────────────────────
 class KhataResponse(BaseModel):
-    id: str
-    user_id: str
+    id: UUID
+    user_id: UUID
     customer_name: str
-    device_id: str
-    motor_log_id: Optional[str]
+    device_id: UUID
+    motor_log_id: Optional[UUID] = None
 
     date: date
     run_hours: float
@@ -139,28 +155,3 @@ class KhataResponse(BaseModel):
     payment_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
-    # """
-    # Response schema.
-
-    # remaining_balance  — mirrors balance; computed in service layer.
-    # payment_status     — "paid" | "partial" | "unpaid"; computed in service layer.
-    # Both are NOT stored in the DB — they are attached to the ORM object
-    # dynamically before returning from each service method.
-    # """
-
-    # id: str
-    # user_id: Optional[str]
-    # customer_name: str
-    # device_id: str
-    # motor_log_id: Optional[str]
-    # date: DateType
-    # run_hours: float
-    # price_per_hour: float
-    # total_bill: float
-    # cash_received: float
-    # balance: float
-    # is_cleared: bool
-    # remaining_balance: Optional[float] = None          # computed, not stored
-    # payment_status: Optional[str] = None               # computed, not stored
-
-    # model_config = ConfigDict(from_attributes=True)

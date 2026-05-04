@@ -15,8 +15,23 @@ class VFDControlService:
         self.repo = VFDCommandLogRepository(db)
         self.mqtt = MQTTService()
 
+    # def _get_device(self, device_id: str) -> Device:
+    #     device = self.db.query(Device).filter(Device.id == device_id).first()
+
+    #     if not device:
+    #         raise AppException(
+    #             status_code=404,
+    #             detail=f"Device '{device_id}' not found",
+    #         )
+
+    #     return device
     def _get_device(self, device_id: str) -> Device:
-        device = self.db.query(Device).filter(Device.id == device_id).first()
+    # 1. Try device_uid (ESP32_001_TW)
+        device = self.db.query(Device).filter(Device.device_uid == device_id).first()
+
+        # 2. Fallback to UUID
+        if not device:
+            device = self.db.query(Device).filter(Device.id == device_id).first()
 
         if not device:
             raise AppException(
@@ -35,10 +50,13 @@ class VFDControlService:
 
         try:
             device = self._get_device(device_id)
+            db_device_id = str(device.id)
+           
+            
 
             log = self.repo.create(
                 VFDCommandLog(
-                    device_id=device_id,
+                    device_id=db_device_id,
                     command="RESET_VFD",
                     status="PENDING",
                 )
@@ -107,7 +125,7 @@ class VFDControlService:
 
             log = self.repo.create(
                 VFDCommandLog(
-                    device_id=device_id,
+                    device_id=str(device.id),
                     command="SET_REFERENCE_FREQUENCY",
                     reference_frequency=reference_frequency,
                     status="PENDING",

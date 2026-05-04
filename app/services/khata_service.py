@@ -101,6 +101,46 @@ class KhataService:
 
         return entry
 
+    def _get_owned_device(self, user_id: str, device_id: str) -> Device:
+        """
+        Get a device owned by the user.
+
+        Accepts both:
+        - device_uid, for example ESP32_001_TW
+        - internal UUID devices.id
+
+        Returns:
+            Device ORM object.
+
+        Raises:
+            AppException if device does not exist or does not belong to user.
+        """
+        device = (
+            self.db.query(Device)
+            .filter(Device.device_uid == device_id, Device.user_id == user_id)
+            .first()
+        )
+
+        if not device:
+            device = (
+                self.db.query(Device)
+                .filter(Device.id == device_id, Device.user_id == user_id)
+                .first()
+            )
+
+        if not device:
+            logger.warning(
+                "Khata device lookup denied. Device not found or not owned: user_id=%s device_id=%s",
+                user_id,
+                device_id,
+            )
+            raise AppException(
+                status_code=404,
+                detail="Device not found or does not belong to you",
+            )
+
+        return device
+
     def create_entry(self, user_id: str, data: dict) -> KhataEntry:
         """
         Create a Khata ledger entry.
@@ -130,22 +170,10 @@ class KhataService:
                     detail="device_id is required",
                 )
 
-            device = (
-                self.db.query(Device)
-                .filter(Device.id == device_id, Device.user_id == user_id)
-                .first()
-            )
+            device = self._get_owned_device(user_id=user_id, device_id=device_id)
 
-            if not device:
-                logger.warning(
-                    "Khata create denied. Device not found or not owned: user_id=%s device_id=%s",
-                    user_id,
-                    device_id,
-                )
-                raise AppException(
-                    status_code=404,
-                    detail="Device not found or does not belong to you",
-                )
+            db_device_id = str(device.id)
+            data["device_id"] = db_device_id
 
             if not data.get("date"):
                 data["date"] = datetime.now().date()
@@ -155,7 +183,7 @@ class KhataService:
                     self.db.query(MotorLog)
                     .filter(
                         MotorLog.id == data["motor_log_id"],
-                        MotorLog.device_id == device_id,
+                        MotorLog.device_id == db_device_id,
                     )
                     .first()
                 )
@@ -239,10 +267,11 @@ class KhataService:
             created = self.repo.create_entry(entry)
 
             logger.info(
-                "Khata entry created: id=%s user_id=%s device_id=%s total_bill=%s cash=%s balance=%s",
+                "Khata entry created: id=%s user_id=%s device_id=%s device_uid=%s total_bill=%s cash=%s balance=%s",
                 created.id,
                 user_id,
-                device_id,
+                db_device_id,
+                device.device_uid,
                 created.total_bill,
                 created.cash_received,
                 created.balance,
@@ -415,6 +444,13 @@ class KhataService:
                 key: value for key, value in data.items()
                 if value is not None
             }
+
+            if "device_id" in clean_data:
+                device = self._get_owned_device(
+                    user_id=user_id,
+                    device_id=clean_data["device_id"],
+                )
+                clean_data["device_id"] = str(device.id)
 
             if "run_hours" in clean_data:
                 clean_data["run_hours"] = round(_to_float(clean_data["run_hours"]), 2)

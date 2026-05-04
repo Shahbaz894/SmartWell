@@ -331,6 +331,27 @@ docker network create iot_project_smartwell_net
 
 If the network already exists, Docker will show an error. That is okay.
 
+//////////////////////////////////////////////////////////////////////////////////
+
+for push and pull to docker hub
+docker build -t shahbazzulfiqar/smartwell:latest .
+docker push shahbazzulfiqar/smartwell:latest
+
+for droplet code used for droplet code to fetch docker container
+ssh root@157.245.55.83
+
+docker pull shahbazzulfiqar/smartwell:latest
+docker rm -f iot_project_backend_1
+
+docker run -d \
+  --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:latest
+//////////////////////////////////////////////////////////////////////////
+
 2. Run PostgreSQL container
 docker run -d --name db \
   --restart unless-stopped \

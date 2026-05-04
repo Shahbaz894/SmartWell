@@ -16,6 +16,7 @@ class VFDCommandLog(Base):
         nullable=False,
         index=True,
     )
+    # device_id = Column(String(100), unique=True, nullable=False, index=True)
 
     command = Column(String(50), nullable=False)
     reference_frequency = Column(Float, nullable=True)

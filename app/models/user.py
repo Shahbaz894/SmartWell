@@ -1,5 +1,5 @@
 # app/models/user.py
-from sqlalchemy import Column, String, TIMESTAMP
+from sqlalchemy import Column, String, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 import uuid
@@ -14,7 +14,9 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     google_id = Column(String(255), nullable=True)
     role = Column(String(20), default="user")  # 👈 ADD THIS
-    created_at = Column(TIMESTAMP, server_default="now()")
+  
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
     
     # inside User class
     devices = relationship("Device", back_populates="owner", cascade="all, delete")

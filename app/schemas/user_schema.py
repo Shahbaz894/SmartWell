@@ -1,12 +1,13 @@
-from pydantic import BaseModel, EmailStr
+from uuid import UUID
 from datetime import datetime
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: str = "user"   # 👈 ADD THIS (admin/user)
+    role: str = "user"
 
 
 class UserLogin(BaseModel):
@@ -15,11 +16,10 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     email: EmailStr
-    role: str            # 👈 ADD THIS
-    created_at: datetime
+    role: str | None = "user"
+    created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
