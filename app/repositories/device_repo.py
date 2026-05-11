@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-
+from app.models.user import User
 from app.models.device import Device
 from app.core.exceptions import AppException
 from app.core.logger import logger
 
-
+from app.repositories.motor_telemetry_repo import MotorTelemetryRepository
 def _db_error(exc: Exception) -> str:
     return str(exc.orig) if hasattr(exc, "orig") else str(exc)
 
@@ -59,10 +59,9 @@ class DeviceRepository:
                 detail=f"Database error while fetching device by UID: {_db_error(exc)}",
             )
 
+  
+
     def get_user_devices(self, user_id: str):
-        """
-        Get all devices owned by one user.
-        """
         try:
             return (
                 self.db.query(Device)
@@ -82,7 +81,6 @@ class DeviceRepository:
                 status_code=500,
                 detail=f"Database error while fetching user devices: {_db_error(exc)}",
             )
-
     def create_device(self, device: Device):
         """
         Insert new device.

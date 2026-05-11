@@ -29,6 +29,7 @@ class DeviceResponse(BaseModel):
     location: Optional[str]
     reference_freq: Optional[float]
     created_at: Optional[datetime]
+    is_online: bool = False
 
     class Config:
         from_attributes = True

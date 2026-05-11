@@ -9,7 +9,7 @@ from app.models.device import Device
 from app.models.user import User
 from app.repositories.device_repo import DeviceRepository
 from app.schemas.device_schema import DeviceCreate, DeviceUpdate
-
+from app.repositories.motor_telemetry_repo import MotorTelemetryRepository
 
 def _db_error(exc: Exception) -> str:
     return str(exc.orig) if hasattr(exc, "orig") else str(exc)
@@ -33,6 +33,7 @@ class DeviceService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = DeviceRepository(db)
+        self.telemetry_repo = MotorTelemetryRepository()
 
     def create_device(self, user_id: str, device_data: DeviceCreate):
         """
@@ -168,11 +169,6 @@ class DeviceService:
             )
 
     def get_user_devices(self, user_id: str):
-        """
-        Get all devices owned by one user.
-
-        This is used by Flutter dashboard to show all tube wells.
-        """
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
             if not user:
@@ -182,14 +178,26 @@ class DeviceService:
                 )
 
             devices = self.repo.get_user_devices(user_id)
+            telemetry_repo = MotorTelemetryRepository()
 
-            logger.info(
-                "User devices fetched successfully: user_id=%s count=%s",
-                user_id,
-                len(devices),
-            )
+            result = []
 
-            return devices
+            for device in devices:
+                latest = telemetry_repo.get_latest(self.db, str(device.id))
+
+                result.append({
+                    "id": device.id,
+                    "user_id": device.user_id,
+                    "device_uid": device.device_uid,
+                    "device_name": device.device_name,
+                    "location": device.location,
+                    "sim_number": device.sim_number,
+                    "reference_freq": device.reference_freq,
+                    "created_at": device.created_at,   # 🔥 REQUIRED
+                    "is_online": latest is not None and latest.is_live == 1,
+                })
+
+            return result
 
         except AppException:
             raise

@@ -963,7 +963,7 @@ class MotorTelemetryService:
                 )
                 return None
 
-            latest = self.repo.get_latest_live(db, str(device.id))
+            latest = self.repo.get_latest(db, str(device.id))
 
             if not latest:
                 logger.warning(
