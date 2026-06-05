@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppException, NotFoundException
 from app.core.logger import logger
 from app.core.security import get_current_user
-from app.db.session import get_db
+from app.db.session import get_db, SessionLocal
 from app.models.user import User
 from app.schemas.motor_telemetry_schema import (
     MotorTelemetryCreate,
@@ -26,6 +26,7 @@ def _raise_http_error(exc: AppException):
     raise HTTPException(
         status_code=getattr(exc, "status_code", 500),
         detail=getattr(exc, "detail", str(exc)),
+        
     )
 
 
@@ -33,30 +34,34 @@ def _raise_http_error(exc: AppException):
     "/{device_id}",
     response_model=MotorTelemetryResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="HTTP test ingestion for telemetry",
+    summary="HTTP telemetry ingestion",
 )
 def create_telemetry(
     device_id: str,
     payload: MotorTelemetryCreate,
-    db: Session = Depends(get_db),
     service: MotorTelemetryService = Depends(get_service),
 ):
     """
     Store telemetry through HTTP.
 
-    MQTT note:
-    ESP32 should normally publish telemetry to:
-        tubewell/{device_uid}/telemetry
-
-    This endpoint is kept for Swagger, curl, and debugging only.
+    Opens its own SessionLocal — same as MQTTTelemetryConsumerService.on_message.
+    Calls service.create_telemetry which now normalizes payload identically to MQTT path.
     """
+    db = None
     try:
-        created = service.create_telemetry(db, device_id, payload)
+        db = SessionLocal()
+
+        created = service.create_telemetry(
+            db=db,
+            device_id=device_id,
+            data=payload,
+        )
 
         logger.info(
-            "HTTP telemetry API create success: device_id=%s telemetry_id=%s",
+            "HTTP telemetry API create success: device_id=%s telemetry_id=%s is_live=%s",
             device_id,
             created.id,
+            created.is_live,
         )
 
         return created
@@ -72,7 +77,7 @@ def create_telemetry(
 
     except Exception as exc:
         logger.error(
-            "HTTP telemetry API unexpected create error: device_id=%s error_type=%s error=%s",
+            "HTTP telemetry API unexpected error: device_id=%s error_type=%s error=%s",
             device_id,
             type(exc).__name__,
             str(exc),
@@ -83,11 +88,15 @@ def create_telemetry(
             detail=f"Unexpected telemetry create error: {type(exc).__name__}: {str(exc)}",
         )
 
+    finally:
+        if db:
+            db.close()
+
 
 @router.get(
     "/{device_id}/latest",
     response_model=Optional[MotorTelemetryResponse],
-    summary="Get latest live telemetry",
+    summary="Get latest telemetry",
 )
 def get_latest_live_telemetry(
     device_id: str,
@@ -96,10 +105,10 @@ def get_latest_live_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Return latest live telemetry saved in PostgreSQL.
+    Return latest telemetry saved in PostgreSQL.
 
-    It does not read directly from MQTT.
-    MQTT subscriber stores telemetry first, then this route reads DB.
+    Does not read directly from MQTT.
+    MQTT consumer stores telemetry first, then this route reads from DB.
     """
     try:
         latest = service.get_latest_live(db, device_id)
@@ -125,10 +134,9 @@ def get_latest_live_telemetry(
 
     except Exception as exc:
         logger.error(
-            "Telemetry API unexpected latest error: user_id=%s device_id=%s error_type=%s error=%s",
+            "Telemetry API unexpected latest error: user_id=%s device_id=%s error=%s",
             user.id,
             device_id,
-            type(exc).__name__,
             str(exc),
             exc_info=True,
         )
@@ -150,7 +158,7 @@ def get_device_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Return stored telemetry records for dashboard.
+    Return stored telemetry records for dashboard history.
     """
     try:
         records = service.get_device_telemetry(db, device_id)
@@ -176,10 +184,9 @@ def get_device_telemetry(
 
     except Exception as exc:
         logger.error(
-            "Telemetry API unexpected list error: user_id=%s device_id=%s error_type=%s error=%s",
+            "Telemetry API unexpected list error: user_id=%s device_id=%s error=%s",
             user.id,
             device_id,
-            type(exc).__name__,
             str(exc),
             exc_info=True,
         )
@@ -201,8 +208,7 @@ def delete_telemetry(
     user: User = Depends(get_current_user),
 ):
     """
-    Delete one telemetry record.
-
+    Delete one telemetry record by UUID.
     Route uses /record/{telemetry_id} to avoid conflict with /{device_id}.
     """
     try:
@@ -237,10 +243,9 @@ def delete_telemetry(
 
     except Exception as exc:
         logger.error(
-            "Telemetry API unexpected delete error: user_id=%s telemetry_id=%s error_type=%s error=%s",
+            "Telemetry API unexpected delete error: user_id=%s telemetry_id=%s error=%s",
             user.id,
             telemetry_id,
-            type(exc).__name__,
             str(exc),
             exc_info=True,
         )

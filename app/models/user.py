@@ -1,7 +1,7 @@
 # app/models/user.py
 from sqlalchemy import Column, String, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import UUID
-from app.db.base import Base
+from app.db.base_class import Base
 import uuid
 from sqlalchemy.orm import relationship
 
