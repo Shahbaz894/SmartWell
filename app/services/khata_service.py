@@ -86,18 +86,22 @@ class KhataService:
 
     @staticmethod
     def _attach_computed_fields(entry: KhataEntry) -> KhataEntry:
-        """
-        Attach response-only fields to an ORM object.
 
-        These fields are not stored as database columns:
-        - remaining_balance
-        - payment_status
-        """
         balance = _to_float(entry.balance)
         cash = _to_float(entry.cash_received)
 
         entry.remaining_balance = balance
-        entry.payment_status = KhataService._compute_payment_status(balance, cash)
+
+        entry.payment_status = (
+            KhataService._compute_payment_status(
+                balance,
+                cash,
+            )
+        )
+
+        entry.advance_amount = _to_float(
+            getattr(entry, "advance_amount", 0)
+        )
 
         return entry
 
@@ -140,20 +144,21 @@ class KhataService:
             )
 
         return device
-
     def create_entry(self, user_id: str, data: dict) -> KhataEntry:
+        
+                
         """
         Create a Khata ledger entry.
 
-        Expected data:
-        - device_id
-        - customer_name
-        - run_hours or motor_log_id
-        - price_per_hour
-        - cash_received
-
-        If motor_log_id is provided, run_hours is calculated from motor log.
+        ```
+        Supports:
+        - run_hours directly
+        - motor_log_id based billing
+        - partial payment
+        - full payment
+        - advance payment
         """
+
         try:
             logger.info(
                 "Khata create requested: user_id=%s customer=%s device_id=%s motor_log_id=%s",
@@ -163,22 +168,36 @@ class KhataService:
                 data.get("motor_log_id"),
             )
 
+            # ---------------------------------------------------------
+            # Validate Device
+            # ---------------------------------------------------------
             device_id = data.get("device_id")
+
             if not device_id:
                 raise AppException(
                     status_code=400,
                     detail="device_id is required",
                 )
 
-            device = self._get_owned_device(user_id=user_id, device_id=device_id)
+            device = self._get_owned_device(
+                user_id=user_id,
+                device_id=device_id,
+            )
 
-            db_device_id = str(device.id)
+            db_device_id = device.id
             data["device_id"] = db_device_id
 
+            # ---------------------------------------------------------
+            # Default Date
+            # ---------------------------------------------------------
             if not data.get("date"):
                 data["date"] = datetime.now().date()
 
+            # ---------------------------------------------------------
+            # Motor Log Billing
+            # ---------------------------------------------------------
             if data.get("motor_log_id"):
+
                 log = (
                     self.db.query(MotorLog)
                     .filter(
@@ -200,8 +219,14 @@ class KhataService:
                         detail="Motor log is incomplete. Motor may still be running.",
                     )
 
-                run_seconds = (log.end_time - log.start_time).total_seconds()
-                data["run_hours"] = round(run_seconds / 3600, 2)
+                run_seconds = (
+                    log.end_time - log.start_time
+                ).total_seconds()
+
+                data["run_hours"] = round(
+                    run_seconds / 3600,
+                    2,
+                )
 
                 logger.info(
                     "Khata run_hours calculated from motor log: motor_log_id=%s run_hours=%s",
@@ -209,6 +234,9 @@ class KhataService:
                     data["run_hours"],
                 )
 
+            # ---------------------------------------------------------
+            # Validation
+            # ---------------------------------------------------------
             if not data.get("run_hours"):
                 raise AppException(
                     status_code=400,
@@ -221,9 +249,20 @@ class KhataService:
                     detail="price_per_hour is required",
                 )
 
-            run_hours = round(_to_float(data["run_hours"]), 2)
-            price_per_hour = round(_to_float(data["price_per_hour"]), 2)
-            cash_received = round(_to_float(data.get("cash_received")), 2)
+            run_hours = round(
+                _to_float(data["run_hours"]),
+                2,
+            )
+
+            price_per_hour = round(
+                _to_float(data["price_per_hour"]),
+                2,
+            )
+
+            cash_received = round(
+                _to_float(data.get("cash_received")),
+                2,
+            )
 
             if run_hours <= 0:
                 raise AppException(
@@ -243,23 +282,60 @@ class KhataService:
                     detail="cash_received cannot be negative",
                 )
 
-            total_bill = round(run_hours * price_per_hour, 2)
-            balance = round(total_bill - cash_received, 2)
+            # ---------------------------------------------------------
+            # Bill Calculation
+            # ---------------------------------------------------------
+            total_bill = round(
+                run_hours * price_per_hour,
+                2,
+            )
 
+            if cash_received >= total_bill:
+
+                advance_amount = round(
+                    cash_received - total_bill,
+                    2,
+                )
+
+                balance = 0
+                is_cleared = True
+
+            else:
+
+                advance_amount = 0
+
+                balance = round(
+                    total_bill - cash_received,
+                    2,
+                )
+
+                is_cleared = False
+
+            # ---------------------------------------------------------
+            # Save Values
+            # ---------------------------------------------------------
             data.update(
                 run_hours=run_hours,
                 price_per_hour=price_per_hour,
                 total_bill=total_bill,
                 cash_received=cash_received,
                 balance=balance,
-                is_cleared=balance <= 0,
+                advance_amount=advance_amount,
+                is_cleared=is_cleared,
             )
 
-            for field in ("remaining_balance", "payment_status", "user_id"):
+            # Remove client-controlled fields
+            for field in (
+                "remaining_balance",
+                "payment_status",
+                "user_id",
+            ):
                 data.pop(field, None)
 
+            # ---------------------------------------------------------
+            # Create Entry
+            # ---------------------------------------------------------
             entry = KhataEntry(
-                id=str(uuid4()),
                 user_id=user_id,
                 **data,
             )
@@ -267,14 +343,14 @@ class KhataService:
             created = self.repo.create_entry(entry)
 
             logger.info(
-                "Khata entry created: id=%s user_id=%s device_id=%s device_uid=%s total_bill=%s cash=%s balance=%s",
+                "Khata entry created: id=%s user_id=%s device_id=%s total_bill=%s cash=%s balance=%s advance=%s",
                 created.id,
                 user_id,
                 db_device_id,
-                device.device_uid,
                 created.total_bill,
                 created.cash_received,
                 created.balance,
+                created.advance_amount,
             )
 
             return self._attach_computed_fields(created)
@@ -290,9 +366,10 @@ class KhataService:
                 _db_error(exc),
                 exc_info=True,
             )
+
             raise AppException(
                 status_code=400,
-                detail=f"Khata create failed. Check device_id, motor_log_id, and required fields. DB error: {_db_error(exc)}",
+                detail=f"Khata create failed. DB error: {_db_error(exc)}",
             )
 
         except SQLAlchemyError as exc:
@@ -303,6 +380,7 @@ class KhataService:
                 _db_error(exc),
                 exc_info=True,
             )
+
             raise AppException(
                 status_code=500,
                 detail=f"Database error while creating Khata entry: {_db_error(exc)}",
@@ -310,17 +388,18 @@ class KhataService:
 
         except Exception as exc:
             logger.error(
-                "Khata create unexpected error: user_id=%s error_type=%s error=%s data=%s",
+                "Khata create unexpected error: user_id=%s error_type=%s error=%s",
                 user_id,
                 type(exc).__name__,
                 str(exc),
-                data,
                 exc_info=True,
             )
+
             raise AppException(
                 status_code=500,
                 detail=f"Unexpected error while creating Khata entry: {type(exc).__name__}: {str(exc)}",
             )
+        
 
     def get_all_entries(self, user_id: str) -> list[KhataEntry]:
         """
@@ -424,57 +503,32 @@ class KhataService:
                 detail=f"Unexpected error while fetching Khata entry: {type(exc).__name__}: {str(exc)}",
             )
 
-    def update_entry(self, entry_id: str, user_id: str, data: dict) -> KhataEntry:
-        """
-        Update editable Khata fields.
-
-        After update, balance and is_cleared are recalculated.
-        """
+    def update_entry(
+        self,
+        entry_id: str,
+        user_id: str,
+        data: dict,
+    ) -> KhataEntry:
         try:
             logger.info(
-                "Khata update requested: entry_id=%s user_id=%s data=%s",
+                "Khata update requested: entry_id=%s user_id=%s",
                 entry_id,
                 user_id,
-                data,
             )
 
-            entry = self.repo.get_entry(entry_id=entry_id, user_id=user_id)
+            entry = self.repo.get_entry(
+                entry_id=entry_id,
+                user_id=user_id,
+            )
 
-            clean_data = {
-                key: value for key, value in data.items()
-                if value is not None
-            }
-
-            if "device_id" in clean_data:
-                device = self._get_owned_device(
-                    user_id=user_id,
-                    device_id=clean_data["device_id"],
-                )
-                clean_data["device_id"] = str(device.id)
+            clean_data = {k: v for k, v in data.items() if v is not None}
 
             if "run_hours" in clean_data:
                 clean_data["run_hours"] = round(_to_float(clean_data["run_hours"]), 2)
-                if clean_data["run_hours"] <= 0:
-                    raise AppException(
-                        status_code=400,
-                        detail="run_hours must be greater than 0",
-                    )
-
             if "price_per_hour" in clean_data:
                 clean_data["price_per_hour"] = round(_to_float(clean_data["price_per_hour"]), 2)
-                if clean_data["price_per_hour"] < 0:
-                    raise AppException(
-                        status_code=400,
-                        detail="price_per_hour cannot be negative",
-                    )
-
             if "cash_received" in clean_data:
                 clean_data["cash_received"] = round(_to_float(clean_data["cash_received"]), 2)
-                if clean_data["cash_received"] < 0:
-                    raise AppException(
-                        status_code=400,
-                        detail="cash_received cannot be negative",
-                    )
 
             updated = self.repo.update_entry(entry, clean_data)
 
@@ -483,43 +537,38 @@ class KhataService:
             cash_received = _to_float(updated.cash_received)
 
             total_bill = round(run_hours * price_per_hour, 2)
-            balance = round(total_bill - cash_received, 2)
+
+            if cash_received >= total_bill:
+                advance_amount = round(cash_received - total_bill, 2)
+                balance = 0
+                is_cleared = True
+            else:
+                advance_amount = 0
+                balance = round(total_bill - cash_received, 2)
+                is_cleared = False
 
             updated = self.repo.update_entry(
                 updated,
                 {
                     "total_bill": total_bill,
                     "balance": balance,
-                    "is_cleared": balance <= 0,
+                    "advance_amount": advance_amount,
+                    "is_cleared": is_cleared,
                 },
-            )
-
-            logger.info(
-                "Khata entry updated: entry_id=%s total_bill=%s balance=%s cleared=%s",
-                updated.id,
-                updated.total_bill,
-                updated.balance,
-                updated.is_cleared,
             )
 
             return self._attach_computed_fields(updated)
 
         except NotFoundException:
-            raise AppException(
-                status_code=404,
-                detail="Khata entry not found",
-            )
-
+            raise AppException(status_code=404, detail="Khata entry not found")
+        
         except AppException:
             raise
 
         except SQLAlchemyError as exc:
             logger.error(
                 "Khata update database error: entry_id=%s user_id=%s db_error=%s",
-                entry_id,
-                user_id,
-                _db_error(exc),
-                exc_info=True,
+                entry_id, user_id, _db_error(exc), exc_info=True,
             )
             raise AppException(
                 status_code=500,
@@ -529,11 +578,7 @@ class KhataService:
         except Exception as exc:
             logger.error(
                 "Khata update unexpected error: entry_id=%s user_id=%s error_type=%s error=%s",
-                entry_id,
-                user_id,
-                type(exc).__name__,
-                str(exc),
-                exc_info=True,
+                entry_id, user_id, type(exc).__name__, str(exc), exc_info=True,
             )
             raise AppException(
                 status_code=500,
@@ -546,56 +591,43 @@ class KhataService:
         user_id: str,
         cash_received: float,
     ) -> KhataEntry:
-        """
-        Add a payment to an existing Khata entry.
-
-        cash_received is added to the old value.
-        It does not replace the old value.
-        """
         try:
             if cash_received <= 0:
-                raise AppException(
-                    status_code=400,
-                    detail="cash_received must be greater than 0",
-                )
+                raise AppException(status_code=400, detail="cash_received must be greater than 0")
 
             entry = self.repo.get_entry(entry_id=entry_id, user_id=user_id)
-
-            if entry.is_cleared:
-                raise AppException(
-                    status_code=400,
-                    detail="Entry is already fully cleared",
-                )
-
-            new_cash = round(_to_float(entry.cash_received) + _to_float(cash_received), 2)
+            current_cash = _to_float(entry.cash_received)
+            total_cash = round(current_cash + cash_received, 2)
             total_bill = _to_float(entry.total_bill)
-            new_balance = round(total_bill - new_cash, 2)
+
+            if total_cash >= total_bill:
+                advance_amount = round(total_cash - total_bill, 2)
+                balance = 0
+                is_cleared = True
+            else:
+                advance_amount = 0
+                balance = round(total_bill - total_cash, 2)
+                is_cleared = False
 
             updated = self.repo.update_entry(
                 entry,
                 {
-                    "cash_received": new_cash,
-                    "balance": new_balance,
-                    "is_cleared": new_balance <= 0,
+                    "cash_received": total_cash,
+                    "balance": balance,
+                    "advance_amount": advance_amount,
+                    "is_cleared": is_cleared,
                 },
             )
 
             logger.info(
-                "Khata payment recorded: entry_id=%s added=%s total_cash=%s balance=%s cleared=%s",
-                updated.id,
-                cash_received,
-                updated.cash_received,
-                updated.balance,
-                updated.is_cleared,
+                "Payment added: entry=%s cash=%s balance=%s advance=%s",
+                updated.id, updated.cash_received, updated.balance, updated.advance_amount,
             )
 
             return self._attach_computed_fields(updated)
 
         except NotFoundException:
-            raise AppException(
-                status_code=404,
-                detail="Khata entry not found",
-            )
+            raise AppException(status_code=404, detail="Khata entry not found")
 
         except AppException:
             raise
@@ -603,10 +635,7 @@ class KhataService:
         except SQLAlchemyError as exc:
             logger.error(
                 "Khata payment database error: entry_id=%s user_id=%s db_error=%s",
-                entry_id,
-                user_id,
-                _db_error(exc),
-                exc_info=True,
+                entry_id, user_id, _db_error(exc), exc_info=True,
             )
             raise AppException(
                 status_code=500,
@@ -616,17 +645,13 @@ class KhataService:
         except Exception as exc:
             logger.error(
                 "Khata payment unexpected error: entry_id=%s user_id=%s error_type=%s error=%s",
-                entry_id,
-                user_id,
-                type(exc).__name__,
-                str(exc),
-                exc_info=True,
+                entry_id, user_id, type(exc).__name__, str(exc), exc_info=True,
             )
             raise AppException(
                 status_code=500,
                 detail=f"Unexpected error while recording payment: {type(exc).__name__}: {str(exc)}",
             )
-
+   
     def delete_entry(self, entry_id: str, user_id: str) -> bool:
         """
         Delete a Khata entry.

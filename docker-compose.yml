@@ -42,12 +42,14 @@ services:
   # FastAPI Backend
   # ─────────────────────────────
   backend:
-    image: shahbazzulfiqar/smartwell:latest
+    build: .
+      
+    # image: shahbazzulfiqar/smartwell:latest
     container_name: fastapi_backend
     restart: always
 
     ports:
-      - "8000:8080"
+      - "80:8000"
 
     depends_on:
       - db
@@ -75,6 +77,8 @@ services:
 
       MQTT_TELEMETRY_TOPIC_PREFIX: tubewell
       MQTT_TELEMETRY_TOPIC_SUFFIX: telemetry
+      
+     
 
     networks:
       - smartwell_net

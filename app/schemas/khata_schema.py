@@ -35,6 +35,7 @@ class KhataCreate(BaseModel):
     date: Optional[DateType] = None
     run_hours: Optional[float] = None
     total_bill: Optional[float] = 0.0
+    advance_amount: Optional[float] = 0.0
 
     remaining_balance: Optional[float] = None
     payment_status: Optional[Literal["paid", "partial", "unpaid"]] = None
@@ -59,7 +60,12 @@ class KhataCreate(BaseModel):
         if v is not None and v < 0:
             raise ValueError("total_bill cannot be negative")
         return v
-
+    @field_validator("advance_amount")
+    @classmethod
+    def advance_not_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Advance amount cannot be negative")
+        return v
     @field_validator("cash_received")
     @classmethod
     def cash_not_negative(cls, v):
@@ -91,6 +97,7 @@ class KhataUpdate(BaseModel):
     total_bill: Optional[float] = None
     cash_received: Optional[float] = None
     date: Optional[DateType] = None
+    advance_amount: Optional[float] = None
 
     @field_validator("run_hours")
     @classmethod
@@ -153,5 +160,6 @@ class KhataResponse(BaseModel):
 
     remaining_balance: Optional[float] = None
     payment_status: Optional[str] = None
+    advance_amount: float = 0
 
     model_config = ConfigDict(from_attributes=True)

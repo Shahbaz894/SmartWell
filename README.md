@@ -322,6 +322,7 @@ If the project folder does not exist yet:
 
 mkdir -p /root/iot_project
 cd /root/iot_project
+
 Full Production Setup Commands
 
 Use these commands when setting up the project from scratch on the droplet.
@@ -334,8 +335,8 @@ If the network already exists, Docker will show an error. That is okay.
 //////////////////////////////////////////////////////////////////////////////////
 
 for push and pull to docker hub
-docker build -t shahbazzulfiqar/smartwell:latest .
-docker push shahbazzulfiqar/smartwell:latest
+docker build -t shahb
+docker push shahbazzulfiqar/smartwell:
 
 for droplet code used for droplet code to fetch docker container
 ssh root@157.245.55.83
@@ -343,13 +344,7 @@ ssh root@157.245.55.83
 docker pull shahbazzulfiqar/smartwell:latest
 docker rm -f iot_project_backend_1
 
-docker run -d \
-  --name iot_project_backend_1 \
-  --restart unless-stopped \
-  --network iot_project_smartwell_net \
-  -p 80:8080 \
-  --env-file /root/iot_project/.env \
-  shahbazzulfiqar/smartwell:latest
+
 //////////////////////////////////////////////////////////////////////////
 
 2. Run PostgreSQL container
@@ -363,12 +358,12 @@ docker run -d --name db \
   postgres:15
 3. Run Mosquitto container
 docker run -d --name iot_project_mosquitto_1 \
-  --restart unless-stopped \
+  --restart unless-stopped \latest
   --network iot_project_smartwell_net \
   -p 1883:1883 \
   eclipse-mosquitto
 4. Create .env file
-nano /root/iot_project/.env
+nano /root/iot_project/.envlatest
 
 Paste:
 
@@ -428,6 +423,7 @@ Step 4. Push image to Docker Hub
 docker push shahbazzulfiqar/smartwell:latest
 
 If using version tags:
+abdulA1ziz
 
 docker push shahbazzulfiqar/smartwell:v2
 docker push shahbazzulfiqar/smartwell:latest

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validat
 
 
 STATUS_CODE_MAP = {
+    0: { "name": "Motor Off", "description": "Motor is stopped", },
     1: {
         "name": "Forward Running",
         "description": "Motor/device is running in forward direction",
@@ -114,54 +115,65 @@ FAULT_CODE_MAP = {
 }
 
 
+
 class MotorTelemetryCreate(BaseModel):
-    """
-    Incoming telemetry payload from ESP32.
+    # Added Optional to fields so partial MQTT packets don't crash validation
+    timestamp: Optional[int] = Field(default=0)
+    freq: Optional[float] = Field(default=0.0)
+    current: Optional[float] = Field(default=0.0)
+    voltage: Optional[float] = Field(default=0.0)
+    dcbus: Optional[float] = Field(default=0.0)
+    power: Optional[float] = Field(default=0.0)
+    energy_in: Optional[float] = Field(default=0.0)
+    
+    fault: Optional[int] = Field(default=0)
+    fault_code: Optional[int] = Field(default=0)
+    status_code: Optional[int] = Field(default=0)
 
-    ESP32 should send numeric values for:
-    - fault: 0 or 1
-    - fault_code: 0 to 19
-    - status_code: 1 to 5
-    - is_live: 0 or 1
-    """
+    reference_freq: Optional[float] = Field(default=0.0)
+    motor_speed: Optional[float] = Field(default=0.0)
+    power_percent: Optional[float] = Field(default=0.0)
+    torque_percent: Optional[float] = Field(default=0.0)
+    is_live: Optional[int] = Field(default=0)
 
-    timestamp: int = Field(
-        ...,
-        description="Device Unix timestamp in seconds",
-    )
+    @field_validator("is_live", "fault")
+    @classmethod
+    def validate_binary_flags(cls, value: Optional[int]) -> int:
+        val = value if value is not None else 0
+        if val not in (0, 1):
+            return 0 # Fallback to 0 instead of crashing
+        return val
 
-    freq: float = Field(..., description="Output frequency in Hz")
-    current: float = Field(..., description="Output current in ampere")
-    voltage: float = Field(..., description="Output voltage")
-    dcbus: float = Field(..., description="DC bus voltage")
-    power: float = Field(..., description="Current power in kW")
-    energy_in: Optional[float] = Field(
-        default=None,
-        description="Energy value or energy increment in kWh",
-    )
+    @field_validator("fault_code")
+    @classmethod
+    def validate_fault_code(cls, value: Optional[int]) -> int:
+        val = value if value is not None else 0
+        if val not in FAULT_CODE_MAP:
+            return 0
+        return val
 
-    fault: Optional[int] = Field(
-        default=0,
-        description="0 = no fault, 1 = fault active",
-    )
-    fault_code: Optional[int] = Field(
-        default=0,
-        description="ED510 VFD fault code, 0 to 19",
-    )
-    status_code: Optional[int] = Field(
-        default=3,
-        description="1 Forward, 2 Reverse, 3 Standby, 4 Fault, 5 Power Off",
-    )
+    @field_validator("status_code")
+    @classmethod
+    def validate_status_code(cls, value: Optional[int]) -> int:
+        val = value if value is not None else 0
+        # FIX: Explicitly allowed 0
+        if val not in STATUS_CODE_MAP:
+            return 0
+        return val
 
-    reference_freq: float = Field(..., description="Reference frequency in Hz")
-    motor_speed: float = Field(..., description="Motor speed in RPM")
-    power_percent: float = Field(..., description="Power load percentage")
-    torque_percent: float = Field(..., description="Torque load percentage")
-
-    is_live: int = Field(
-        ...,
-        description="1 = live packet, 0 = offline stored packet",
+    @field_validator(
+        "freq", "current", "voltage", "dcbus", "power",
+        "reference_freq", "motor_speed", "power_percent", "torque_percent",
+        mode="before"
     )
+    @classmethod
+    def validate_non_negative_numeric_fields(cls, value):
+        if value is None: return 0.0
+        val = float(value)
+        return val if val >= 0 else 0.0
+
+    model_config = ConfigDict(from_attributes=True)
+    
 
     @field_validator("is_live")
     @classmethod
@@ -209,25 +221,22 @@ class MotorTelemetryCreate(BaseModel):
 
         return value
 
+    
     @field_validator("status_code")
     @classmethod
     def validate_status_code(cls, value: Optional[int]) -> int:
-        """
-        Validate VFD status code.
 
-        1 = Forward Running
-        2 = Reverse Running
-        3 = Standby
-        4 = Fault
-        5 = Power Off
-        """
         if value is None:
-            return 3
+            return 0
 
         if value not in STATUS_CODE_MAP:
-            raise ValueError("status_code must be one of 1, 2, 3, 4, 5")
+            raise ValueError(
+                "status_code must be one of 0,1,2,3,4,5"
+            )
 
         return value
+
+
 
     @field_validator(
         "freq",

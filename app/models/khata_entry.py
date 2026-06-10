@@ -77,6 +77,11 @@ class KhataEntry(Base):
         default=0,
         server_default=text("0")        # DB-level default
     )
+    advance_amount = Column( 
+    Numeric(10, 2), 
+    nullable=False,
+    default=0,
+    server_default=text("0") )
 
     is_cleared = Column(
         Boolean,

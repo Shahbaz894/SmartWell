@@ -95,44 +95,59 @@ class MotorTelemetryService:
             return default
 
     def _normalize_mqtt_payload(self, payload: dict) -> dict:
-        """
-        Normalize raw MQTT payload from ESP32 before Pydantic validation.
-
-        Protects database inserts when ESP32 sends:
-        - booleans instead of 0 or 1
-        - numeric strings instead of integers
-        - null or missing values
-        - timestamp 0
-        """
         normalized = dict(payload)
 
-        if not normalized.get("timestamp"):
-            normalized["timestamp"] = int(datetime.now(timezone.utc).timestamp())
+        now_ts = int(datetime.now(timezone.utc).timestamp())
 
         normalized["timestamp"] = self._to_int_or_default(
             normalized.get("timestamp"),
-            int(datetime.now(timezone.utc).timestamp()),
+            now_ts,
         )
 
-        if normalized["timestamp"] <= 0:
-            logger.warning(
-                "MQTT telemetry timestamp was invalid. Replacing with server timestamp. payload=%s",
-                payload,
-            )
-            normalized["timestamp"] = int(datetime.now(timezone.utc).timestamp())
+        normalized["freq"] = float(normalized.get("freq", 0))
+        normalized["current"] = float(normalized.get("current", 0))
+        normalized["voltage"] = float(normalized.get("voltage", 0))
+        normalized["dcbus"] = float(normalized.get("dcbus", 0))
+        normalized["power"] = float(normalized.get("power", 0))
 
-        normalized["fault"] = self._to_int_or_default(normalized.get("fault"), 0)
-        normalized["fault_code"] = self._to_int_or_default(normalized.get("fault_code"), 0)
-        normalized["status_code"] = self._to_int_or_default(normalized.get("status_code"), 3)
-        normalized["is_live"] = self._to_int_or_default(normalized.get("is_live"), 1)
+        normalized["reference_freq"] = float(
+            normalized.get("reference_freq", 0)
+        )
 
-        if normalized["fault_code"] > 0:
-            normalized["fault"] = 1
+        normalized["motor_speed"] = float(
+            normalized.get("motor_speed", 0)
+        )
 
-        if normalized["status_code"] == 4:
-            normalized["fault"] = 1
+        normalized["power_percent"] = float(
+            normalized.get("power_percent", 0)
+        )
+
+        normalized["torque_percent"] = float(
+            normalized.get("torque_percent", 0)
+        )
+
+        normalized["fault"] = self._to_int_or_default(
+            normalized.get("fault"),
+            0,
+        )
+
+        normalized["fault_code"] = self._to_int_or_default(
+            normalized.get("fault_code"),
+            0,
+        )
+
+        normalized["status_code"] = self._to_int_or_default(
+            normalized.get("status_code"),
+            0,
+        )
+
+        normalized["is_live"] = self._to_int_or_default(
+            normalized.get("is_live"),
+            0,
+        )
 
         return normalized
+    
 
     def _build_telemetry_model(self, device: Device, data: MotorTelemetryCreate) -> MotorTelemetry:
         """

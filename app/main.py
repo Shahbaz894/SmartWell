@@ -1,166 +1,122 @@
 import asyncio
 from contextlib import asynccontextmanager
-
 import app.db.base_class  # noqa: F401 — registers all models with Base.metadata
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+# Import your services and routers
+from app.api import (
+    auth_routes, device_routes, khata_routes, motor_routes,
+    motor_telemetry_routes, schedule_routes, user_routes, vfd_control_routes,
+)
 from app.api.motor_timer_routes import router as motor_timer_routes
 from app.services.mqtt_telemetry_consumer_service import MQTTTelemetryConsumerService
-from app.services.mqtt_service import MQTTService  # 🎯 Added out-bound command pipeline
-
-from app.api import (
-    auth_routes,
-    device_routes,
-    khata_routes,
-    motor_routes,
-    motor_telemetry_routes,
-    schedule_routes,
-    user_routes,
-    vfd_control_routes,
-)
+from app.services.mqtt_service import MQTTService
 from app.core.config import settings
 from app.core.logger import logger
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.db.base import Base
 from app.db.session import engine
 
+# GLOBAL REFERENCE: Prevents Python Garbage Collection from killing the MQTT thread
+mqtt_consumer_ref = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
-
-    Startup:
-    - Validate DATABASE_URL
-    - Check database connectivity with retries
-    - Create tables if needed
-    - Initialize persistent MQTT Command Publisher Singletons
-    - Spawn Background Telemetry Consumer Thread
-    - Start scheduler
-
-    Shutdown:
-    - Stop MQTT telemetry consumer loop safely
-    - Stop scheduler engine clear resources
     """
-    db_url = settings.DATABASE_URL
-    masked_host = db_url.split("@")[-1] if db_url and "@" in db_url else "NOT_SET"
-
-    retries = 10
-    retry_delay_seconds = 3
-    connected = False
-
+    global mqtt_consumer_ref
+    
+    # 1. DATABASE INITIALIZATION
     logger.info("Starting IoT TubeWell API Engine...")
-    logger.info("Checking database host status: %s", masked_host)
-
-    if not db_url:
-        logger.critical("FATAL: DATABASE_URL is not configured inside system variables.")
-        raise RuntimeError("DATABASE_URL is not configured")
-
+    connected = False
+    retries = 10
     while retries > 0 and not connected:
         try:
             def check_db():
                 with engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
-                    Base.metadata.create_all(bind=engine)
-
+            
             await asyncio.get_running_loop().run_in_executor(None, check_db)
             connected = True
-            logger.info("Database connection established and tables verified successfully.")
-
-        except (OperationalError, SQLAlchemyError) as exc:
-            retries -= 1
-            logger.warning(
-                "Database connection failed (%s retries left): %s. Retrying in %ss",
-                retries,
-                exc,
-                retry_delay_seconds,
-                retry_delay_seconds,
-            )
-            await asyncio.sleep(retry_delay_seconds)
-
+            logger.info("Database connection established.")
         except Exception as exc:
-            logger.critical(
-                "Unexpected database initialization error: %s",
-                exc,
-                exc_info=True,
-            )
-            raise RuntimeError("Unexpected database initialization error") from exc
+            retries -= 1
+            logger.warning("Database connection failed (%s retries left): %s", retries, exc)
+            await asyncio.sleep(3)
 
     if not connected:
-        logger.critical("FATAL: Could not connect to database container pool after all retries.")
-        raise RuntimeError("Database initialization failed permanently")
+        logger.critical("FATAL: Could not connect to database.")
+        raise RuntimeError("Database initialization failed")
 
-    # 🚀 MQTT INITIALIZATION ZONE (Only after DB verification is completely done)
+    # 2. BACKGROUND SERVICE INITIALIZATION
     try:
-        # 1. Initialize persistent publisher singletons (Commands flow seamlessly)
+        logger.info("DEBUG: Initializing MQTT Services...")
+        
+        # A. Shared MQTT Publisher
         _ = MQTTService()
-        logger.info("Shared Global MQTT Command Publisher Engine activated.")
+        logger.info("Global MQTT Command Publisher activated.")
 
-        # 2. Spawn and setup background telemetry pipeline listener (DB dynamic entries)
-        app.state.mqtt_consumer = MQTTTelemetryConsumerService()
-        app.state.mqtt_consumer.start()
-        logger.info("Background Telemetry Consumer Process Thread Spawned successfully.")
+        # B. Telemetry Consumer (Persistent Reference)
+        consumer = MQTTTelemetryConsumerService()
+        consumer.start()
+        
+        
+        
+        # INCREASE RETRIES & LOG MORE
+        logger.info("Verifying MQTT connection...")
+        connected = False
+        for i in range(10): # Increase to 10 seconds
+            if consumer.client.is_connected():
+                connected = True
+                logger.info("MQTT Client confirmed connected.")
+                break
+            await asyncio.sleep(1)
+            logger.info(f"Waiting for MQTT... ({i+1}/10)")
+            
+        if not connected:
+            logger.error("MQTT failed to connect in time.")
+            # Do not crash here, just warn - or raise if you want strict boot
+        mqtt_consumer_ref = consumer
+        app.state.mqtt_consumer = consumer
+        logger.info("MQTT Telemetry Consumer service finalized.")
 
-        # 3. Trigger Cron schedules triggers engines
+        # C. Scheduler
         start_scheduler()
-        logger.info("System Scheduler engine launched successfully.")
+        logger.info("System Scheduler engine launched.")
 
     except Exception as exc:
-        logger.critical(
-            "FATAL: Failed to start background network/scheduling services: %s",
-            exc,
-            exc_info=True,
-        )
-        raise RuntimeError("Failed to start background services") from exc
+        logger.critical(f"FATAL: Background services failed: {exc}", exc_info=True)
+        raise RuntimeError("Background service initialization failed")
 
-    try:
-        yield  # 🏁 Main FastAPI application incoming requests threads operate here
-    finally:
-        logger.info("Shutting down IoT TubeWell API gracefully...")
+    yield  # 🏁 App is now running
 
-        # Safe disconnect for consumer thread
-        try:
-            if hasattr(app.state, "mqtt_consumer"):
-                app.state.mqtt_consumer.stop()
-                logger.info("MQTT telemetry consumer connection severed safely.")
-        except Exception as exc:
-            logger.error("Failed to stop MQTT telemetry consumer loop cleanly: %s", exc, exc_info=True)
+    # 3. GRACEFUL SHUTDOWN
+    logger.info("Shutting down IoT TubeWell API...")
+    if mqtt_consumer_ref:
+        mqtt_consumer_ref.stop()
+        
+    stop_scheduler()
 
-        # Safe disconnect for scheduler engine
-        try:
-            stop_scheduler()
-            logger.info("System Scheduler engine stopped successfully.")
-        except Exception as exc:
-            logger.error("Failed to stop scheduler execution cleanly: %s", exc, exc_info=True)
-
-
+# Initialize FastAPI
 app = FastAPI(
     title="IoT TubeWell API",
-    description="Backend for ESP32, VFD, HTTP, and Flutter integration",
-    version="1.0.0",
     lifespan=lifespan,
 )
 
+# Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://192.168.1.8:3000",
-        "http://157.245.55.83:3000",
-        "http://192.168.1.109:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ── Routers Mapping Registration ──────────────────────────────────────────────
-
 app.include_router(user_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(device_routes.router)
@@ -172,33 +128,14 @@ app.include_router(vfd_control_routes.router)
 app.include_router(motor_timer_routes)
 
 # ── Global Exception Handler ──────────────────────────────────────────────────
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Catch-all handler for truly unhandled exceptions.
-    AppException and HTTPException are handled by FastAPI before reaching here.
-    """
-    logger.error(
-        "Unhandled exception: path=%s error=%s",
-        request.url.path,
-        exc,
-        exc_info=True,
-    )
+    logger.error("Unhandled exception: path=%s error=%s", request.url.path, exc, exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "Internal Server Error",
-            "path": request.url.path,
-        },
+        content={"detail": "Internal Server Error", "path": request.url.path},
     )
-
-# ── Health Check Verification Route ───────────────────────────────────────────
 
 @app.get("/", tags=["Health"])
 async def root():
-    """Health check endpoint."""
-    return {
-        "status": "online",
-        "message": "IoT TubeWell Backend Node is fully operational",
-    }
+    return {"status": "online", "message": "IoT TubeWell Backend Node is fully operational"}
