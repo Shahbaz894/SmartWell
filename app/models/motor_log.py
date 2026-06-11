@@ -10,15 +10,19 @@ class MotorLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    # Add index=True for faster lookups when querying history
     device_id = Column(
-        UUID(as_uuid=True),          # ✅ matches Device.id
-        ForeignKey("devices.id"),
-        nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("devices.id", ondelete="CASCADE"), # Added CASCADE for cleanup
+        nullable=False,
+        index=True 
     )
 
-    start_time = Column(TIMESTAMP, nullable=False)
+    start_time = Column(TIMESTAMP, nullable=False, index=True) # Index start_time
     end_time = Column(TIMESTAMP, nullable=True)
     duration_minutes = Column(Integer, nullable=True)
+    
+    # Keeping it as String is fine, but ensure your FastAPI logic validates these
     trigger_type = Column(String(20), nullable=False)
     customer_name = Column(String(100), nullable=False)
     status = Column(String(10), nullable=False, server_default="ON")

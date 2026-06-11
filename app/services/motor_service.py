@@ -9,7 +9,7 @@ from app.models.device import Device
 from app.models.motor_log import MotorLog
 from app.repositories.motor_repo import MotorRepository
 from app.services.mqtt_service import MQTTService
-
+from app.core.state import pending_commands
 
 class MotorService:
     def __init__(self, db: Session):
@@ -63,27 +63,32 @@ class MotorService:
     def start_motor(
         self,
         device_id: str,
-        trigger_type: str = "manual",
+        trigger_type: str = "physical", # Updated default
         customer_name: str = "",
     ) -> MotorLog:
         try:
             device = self._get_device(device_id)
             db_device_id = str(device.id)
-            device = self._get_device(db_device_id)
 
-            normalized_trigger = (trigger_type or "manual").strip().lower()
-            if normalized_trigger not in {"manual", "schedule"}:
+            # 1. Normalize and Validate Trigger Type
+            # Using your Enum categories: app, schedule, timer, physical
+            normalized_trigger = (trigger_type or "physical").strip().lower()
+            allowed_triggers = {"app", "schedule", "timer", "physical"}
+            
+            if normalized_trigger not in allowed_triggers:
                 raise AppException(
                     status_code=400,
-                    detail="trigger_type must be 'manual' or 'schedule'",
+                    detail=f"trigger_type must be one of {allowed_triggers}",
                 )
 
-            if normalized_trigger == "manual" and not customer_name.strip():
+            # 2. Require customer name only for 'app' or 'manual' type triggers
+            if normalized_trigger in {"app", "manual"} and not customer_name.strip():
                 raise AppException(
                     status_code=400,
-                    detail="customer_name is required for manual start",
+                    detail="customer_name is required for App/Manual starts",
                 )
 
+            # 3. Prevent duplicate log entries
             running = self.repo.get_running_motor(db_device_id)
             if running:
                 logger.warning(
@@ -93,50 +98,58 @@ class MotorService:
                 )
                 return running
 
+            # 4. MQTT Command: Send to hardware
             self.mqtt.publish_command(
                 device_uid=device.device_uid,
                 payload={
                     "command": "ON",
-                    "device_id": str(device.id),
+                    "device_id": db_device_id,
                     "device_uid": device.device_uid,
                     "trigger_type": normalized_trigger,
                 },
             )
 
+            # 5. Database: Create persistent record
+            # We use normalized_trigger to ensure the UI knows exactly how it started
             log = MotorLog(
                 device_id=db_device_id,
                 start_time=datetime.utcnow(),
                 trigger_type=normalized_trigger,
-                customer_name=customer_name.strip() or "Schedule",
+                customer_name=customer_name.strip() or f"{normalized_trigger.capitalize()} Start",
                 status="ON",
             )
 
             created = self.repo.create_log(log)
+            self.db.commit() # Ensure the transaction is finalized
 
             logger.info(
-                "Motor started and MQTT ON sent: device_id=%s uid=%s log_id=%s",
+                "Motor started: device_id=%s uid=%s trigger=%s log_id=%s",
                 device_id,
                 device.device_uid,
+                normalized_trigger,
                 created.id,
             )
 
             return created
 
         except AppException:
+            self.db.rollback()
             raise
 
         except SQLAlchemyError as exc:
+            self.db.rollback()
             logger.error("DB error while starting motor: %s", exc, exc_info=True)
             raise AppException(
                 status_code=500,
-                detail=f"Database error while starting motor: {str(exc.orig) if hasattr(exc, 'orig') else str(exc)}",
+                detail=f"Database error: {str(exc.orig) if hasattr(exc, 'orig') else str(exc)}",
             )
 
         except Exception as exc:
+            self.db.rollback()
             logger.error("Unexpected error while starting motor: %s", exc, exc_info=True)
             raise AppException(
                 status_code=500,
-                detail=f"Unexpected error while starting motor: {type(exc).__name__}: {str(exc)}",
+                detail=f"Unexpected error: {type(exc).__name__}: {str(exc)}",
             )
 
     def stop_motor(
@@ -384,3 +397,24 @@ class MotorService:
                 status_code=500,
                 detail=f"Unexpected error while clearing motor logs: {type(exc).__name__}: {str(exc)}",
             )
+            
+   
+
+    def sync_motor_state(self, device_id: str, status_code: int):
+        device = self._get_device(device_id)
+        running_log = self.repo.get_running_motor(str(device.id))
+        
+        # Check if a command is currently expected from our system
+        active_trigger = pending_commands.pop(str(device.id), "physical") 
+
+        # Case 1: Hardware ON (1), DB OFF -> Start Logic
+        if status_code == 1 and not running_log:
+            self.start_motor(
+                device_id=device_id, 
+                trigger_type=active_trigger, 
+                customer_name=f"{active_trigger.capitalize()} Start"
+            )
+
+        # Case 2: Hardware OFF (0), DB ON -> Stop Logic
+        elif status_code == 0 and running_log:
+            self.stop_motor(device_id=device_id)

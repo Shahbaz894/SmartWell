@@ -37,32 +37,63 @@ class MQTTTelemetryConsumerService:
             logger.error(f"DEBUG: Connection failed with code {rc}")
 
     def on_message(self, client, userdata, msg):
+        db = None
+
         try:
             payload_str = msg.payload.decode("utf-8").strip()
+
+            logger.info(
+                f"📥 MQTT Message Received | topic={msg.topic} | payload={payload_str}"
+            )
+
             payload = json.loads(payload_str)
-            
+
+            # Expected topic:
+            # tubewell/<device_uid>/telemetry
             parts = msg.topic.split("/")
-            # Add this debug line to see if device_uid is what you expect
-            logger.info(f"DEBUG: Processing topic={msg.topic}, device_uid={parts[1]}")
+
+            if len(parts) < 3:
+                logger.error(
+                    f"❌ Invalid MQTT topic format: {msg.topic}"
+                )
+                return
+
+            device_uid = parts[1]
+
+            logger.info(
+                f"🔍 Processing telemetry for device_uid={device_uid}"
+            )
 
             db = SessionLocal()
-            try:
-                # Add this debug to see the payload being sent to the service
-                logger.info(f"DEBUG: Passing payload to service: {payload}")
-                self.service.create_telemetry_from_mqtt(
-                    db=db,
-                    device_uid=parts[1],
-                    payload=payload,
-                )
-                logger.info(f"✅ Telemetry stored for {parts[1]}")
-            except Exception as service_exc:
-                # Log the specific error from the service layer
-                logger.error(f"❌ Service layer error: {service_exc}", exc_info=True)
-                raise service_exc
-            finally:
+
+            telemetry = self.service.create_telemetry_from_mqtt(
+                db=db,
+                device_uid=device_uid,
+                payload=payload,
+            )
+
+            logger.info(
+                f"✅ Telemetry stored successfully | "
+                f"telemetry_id={telemetry.id} | "
+                f"device_uid={device_uid}"
+            )
+
+        except json.JSONDecodeError as exc:
+            logger.error(
+                f"❌ Invalid JSON payload on topic {msg.topic}: {exc}",
+                exc_info=True,
+            )
+
+        except Exception as exc:
+            logger.error(
+                f"❌ Error processing MQTT message | "
+                f"topic={msg.topic} | error={exc}",
+                exc_info=True,
+            )
+
+        finally:
+            if db:
                 db.close()
-        except Exception as e:
-            logger.error(f"❌ Error processing MQTT message: {e}", exc_info=True)
     def stop(self):
         logger.info("Stopping MQTT Consumer...")
         self.client.loop_stop()

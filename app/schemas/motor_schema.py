@@ -1,20 +1,22 @@
-# app/schemas/motor_schema.py
-
-from pydantic import BaseModel
+from enum import Enum
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
-from uuid import UUID  
-
+class TriggerType(str, Enum):
+    APP = "app"
+    SCHEDULE = "schedule"
+    TIMER = "timer"
+    PHYSICAL = "physical"
 
 class MotorStartRequest(BaseModel):
-    trigger_type: str  # manual or schedule
+    # Enforce one of the four types
+    trigger_type: TriggerType = TriggerType.APP
     customer_name: Optional[str] = None
-
 
 class MotorStopRequest(BaseModel):
     customer_name: Optional[str] = None
-
 
 class MotorLogResponse(BaseModel):
     id: UUID
@@ -22,7 +24,7 @@ class MotorLogResponse(BaseModel):
     start_time: datetime
     end_time: Optional[datetime]
     duration_minutes: Optional[int]
-    trigger_type: str
+    trigger_type: TriggerType  # Changed from str to enum
     customer_name: Optional[str] = None
     status: Optional[str] = None
 
