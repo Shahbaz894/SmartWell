@@ -31,7 +31,8 @@ class MQTTTelemetryConsumerService:
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             logger.info("DEBUG: MQTT Connected successfully.")
-            client.subscribe("#", qos=0)
+            client.subscribe("tubewell/+/telemetry", qos=0)
+            # client.subscribe("#", qos=0)
             logger.info("DEBUG: Subscribed to topic #")
         else:
             logger.error(f"DEBUG: Connection failed with code {rc}")

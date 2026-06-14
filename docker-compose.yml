@@ -2,86 +2,101 @@ version: '3.8'
 
 services:
 
-  # ─────────────────────────────
-  # PostgreSQL
-  # ─────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────
+  # PostgreSQL Database Engine
+  # ─────────────────────────────────────────────────────────────────────────
   db:
     image: postgres:15
     container_name: postgres_db
     restart: always
-
     environment:
       POSTGRES_USER: shahbaz_admin
       POSTGRES_PASSWORD: shahbaz_password
       POSTGRES_DB: smartwell_db
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    
+    # ⚡ FIX: Added automated healthcheck for Postgres instance
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shahbaz_admin -d smartwell_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
     networks:
       - smartwell_net
+    # ⚡ OPTIMIZATION: Tight RAM control limits to prevent memory spikes on 512MB Server
+    deploy:
+      resources:
+        limits:
+          memory: 160M
 
-  # ─────────────────────────────
-  # MQTT Broker
-  # ─────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────
+  # MQTT Broker (Mosquitto Container Wrapper)
+  # ─────────────────────────────────────────────────────────────────────────
   mosquitto:
     image: eclipse-mosquitto:2
-    container_name: mosquitto_broker
+    container_name: iot_project_mosquitto_1
     restart: always
-
     ports:
       - "1883:1883"
-
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-
     networks:
       - smartwell_net
+    deploy:
+      resources:
+        limits:
+          memory: 40M
 
-  # ─────────────────────────────
-  # FastAPI Backend
-  # ─────────────────────────────
+  # ─────────────────────────────────────────────────────────────────────────
+  # FastAPI Production Workload Backend
+  # ─────────────────────────────────────────────────────────────────────────
   backend:
     build: .
-      
-    # image: shahbazzulfiqar/smartwell:latest
     container_name: fastapi_backend
     restart: always
-
     ports:
       - "80:8000"
-
     depends_on:
-      - db
-      - mosquitto
-
+      db:
+        condition: service_healthy # Wait for database to pass internal diagnostics before booting backend
+      mosquitto:
+        condition: service_started
     environment:
-
-      # DATABASE
+      # DATABASE CONFIG
       DATABASE_URL: postgresql://shahbaz_admin:shahbaz_password@db:5432/smartwell_db
 
-      # JWT
+      # JWT TOKENS
       JWT_SECRET_KEY: your_super_secret_key
 
-      # MQTT
+      # MQTT TELEMETRY SETUPS
       MQTT_BROKER: mosquitto
       MQTT_PORT: 1883
       MQTT_KEEPALIVE: 60
-
       MQTT_USERNAME: ""
       MQTT_PASSWORD: ""
-
       MQTT_QOS: 1
-
       MQTT_COMMAND_TOPIC_PREFIX: tubewell
-
       MQTT_TELEMETRY_TOPIC_PREFIX: tubewell
       MQTT_TELEMETRY_TOPIC_SUFFIX: telemetry
-      
-     
+    
+    # ⚡ PERMANENT HEALTHCHECK CRONTAB: 
+    # Har 30 seconds baad Docker check karega ke kya backend responsive hai. 
+    # Agar thread freeze hua ya API phansi, toh docker backend ko instant self-restart maar dega!
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
     networks:
       - smartwell_net
+    deploy:
+      resources:
+        limits:
+          memory: 200M
 
 networks:
   smartwell_net:

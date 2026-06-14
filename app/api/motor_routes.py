@@ -275,12 +275,14 @@
 #             detail=f"Unexpected motor logs clear error: {type(exc).__name__}: {str(exc)}",
 #         )
 from typing import List
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
 from app.core.logger import logger
 from app.db.session import get_db
+from app.models.motor_log import MotorLog
 from app.schemas.motor_schema import (
     MotorStartRequest,
     MotorStopRequest,
@@ -480,3 +482,13 @@ def clear_motor_logs(device_id: str, db: Session = Depends(get_db)):
         _raise_http_error(exc)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+    
+    # app/api/motor_routes.py
+@router.get("/running/{device_id}", response_model=Optional[MotorLogResponse])
+def get_running_motor(device_id: str, db: Session = Depends(get_db)):
+    service = MotorService(db)
+    # Database mein search karein jiska end_time NULL ho
+    return db.query(MotorLog).filter(
+        MotorLog.device_id == device_id, 
+        MotorLog.end_time == None
+    ).first()

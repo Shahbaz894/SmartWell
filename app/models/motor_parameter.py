@@ -6,6 +6,10 @@ from sqlalchemy.sql import func
 
 from app.db.base_class import Base
 
+# models/motor_telemetry.py me
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
+from app.schemas.motor_timer_schema import TriggerType
 
 class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"
@@ -27,6 +31,7 @@ class MotorTelemetry(Base):
     )
 
     timestamp = Column(BigInteger, nullable=False, index=True)
+    trigger_type: Mapped[TriggerType] = mapped_column(SQLEnum(TriggerType), default=TriggerType.physical)
 
     freq = Column(Float)
     current = Column(Float)

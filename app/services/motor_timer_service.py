@@ -38,7 +38,7 @@ class MotorTimerService:
         logger.info(f"START TIMER => device={device_id}")
 
         # 🔥 Call updated helper utility inside MQTTService
-        MQTTService.publish_motor_command(device_id, "ON")
+        await MQTTService.publish_motor_command(device_id, "ON")
 
         timer = MotorTimerRepository.create(
             db=db,
@@ -79,7 +79,7 @@ class MotorTimerService:
             if not running:
                 return
 
-            MQTTService.publish_motor_command(device_id, "OFF")
+            await MQTTService.publish_motor_command(device_id, "OFF")
 
             MotorTimerRepository.stop_timer(
                 db,

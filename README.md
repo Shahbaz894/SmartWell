@@ -1,6 +1,7 @@
 
 
 docker build -t shahbazzulfiqar/smartwell:latest .
+docker build --no-cache -t shahbazzulfiqar/smartwell:v1.0.0 -t shahbazzulfiqar/smartwell:latest .
 # IoT Tube Well Management System Backend
 
 A production-ready backend for an **IoT-based Tube Well Motor Control System**.
@@ -383,6 +384,17 @@ docker run -d --name iot_project_backend_1 \
   -p 80:8080 \
   --env-file /root/iot_project/.env \
   shahbazzulfiqar/smartwell:latest
+
+6.1 
+  docker run -d --name iot_project_backend_1 \
+  --restart unless-stopped \
+  --network iot_project_smartwell_net \
+  -p 80:8080 \
+  --env-file /root/iot_project/.env \
+  shahbazzulfiqar/smartwell:v1.0.0
+
+  6.2 app.log check karne k lye 
+  docker exec -it iot_project_backend_1 tail -n 20 /app/logs/app.log
 7. Check running containers
 docker ps
 8. Check backend logs
