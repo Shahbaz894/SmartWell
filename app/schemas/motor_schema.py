@@ -3,16 +3,13 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+from app.schemas.enums import TriggerType
 
-class TriggerType(str, Enum):
-    APP = "app"
-    SCHEDULE = "schedule"
-    TIMER = "timer"
-    PHYSICAL = "physical"
+
 
 class MotorStartRequest(BaseModel):
     # Enforce one of the four types
-    trigger_type: TriggerType = TriggerType.APP
+    trigger_type: TriggerType = TriggerType.app
     customer_name: Optional[str] = None
 
 class MotorStopRequest(BaseModel):

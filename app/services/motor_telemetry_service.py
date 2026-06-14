@@ -5,11 +5,18 @@ from uuid import UUID
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from app.schemas.motor_timer_schema import TriggerType
 
 from app.core.exceptions import AppException, NotFoundException
 from app.core.logger import logger
 from app.models.device import Device
 from app.models.motor_parameter import MotorTelemetry
+
+# ---- Naye Imports Yahan Add Karein ----
+from app.models.motor_timer import MotorTimer  # (Path apne project ke hisab se set karein)
+from app.schemas.motor_timer_schema import TriggerType
+# ---------------------------------------
+
 from app.repositories.motor_telemetry_repo import MotorTelemetryRepository
 from app.schemas.motor_telemetry_schema import MotorTelemetryCreate
 
@@ -43,9 +50,6 @@ class MotorTelemetryService:
         db: Session,
         device_id: str,
     ) -> Optional[Device]:
-        """
-        Resolve a device from either device_uid or internal UUID.
-        """
         try:
             device = (
                 db.query(Device)
@@ -68,23 +72,10 @@ class MotorTelemetryService:
             )
 
         except SQLAlchemyError as exc:
-            logger.error(
-                "DB error while resolving device: device_id=%s error=%s",
-                device_id,
-                str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=500,
-                detail=f"Database error while resolving device '{device_id}'",
-            )
+            logger.error("DB error while resolving device", exc_info=True)
+            raise AppException(status_code=500, detail=f"Database error while resolving device '{device_id}'")
 
     def _to_int_or_default(self, value: Any, default: int) -> int:
-        """
-        Convert a value to integer safely.
-        Accepts int, float, bool, and numeric strings.
-        Invalid values return the provided default.
-        """
         if value is None:
             return default
         if isinstance(value, bool):
@@ -98,63 +89,71 @@ class MotorTelemetryService:
         normalized = dict(payload)
 
         now_ts = int(datetime.now(timezone.utc).timestamp())
-
-        normalized["timestamp"] = self._to_int_or_default(
-            normalized.get("timestamp"),
-            now_ts,
-        )
+        normalized["timestamp"] = self._to_int_or_default(normalized.get("timestamp"), now_ts)
 
         normalized["freq"] = float(normalized.get("freq", 0))
         normalized["current"] = float(normalized.get("current", 0))
         normalized["voltage"] = float(normalized.get("voltage", 0))
         normalized["dcbus"] = float(normalized.get("dcbus", 0))
         normalized["power"] = float(normalized.get("power", 0))
-
-        normalized["reference_freq"] = float(
-            normalized.get("reference_freq", 0)
-        )
-
-        normalized["motor_speed"] = float(
-            normalized.get("motor_speed", 0)
-        )
-
-        normalized["power_percent"] = float(
-            normalized.get("power_percent", 0)
-        )
-
-        normalized["torque_percent"] = float(
-            normalized.get("torque_percent", 0)
-        )
-
-        normalized["fault"] = self._to_int_or_default(
-            normalized.get("fault"),
-            0,
-        )
-
-        normalized["fault_code"] = self._to_int_or_default(
-            normalized.get("fault_code"),
-            0,
-        )
-
-        normalized["status_code"] = self._to_int_or_default(
-            normalized.get("status_code"),
-            0,
-        )
-
-        normalized["is_live"] = self._to_int_or_default(
-            normalized.get("is_live"),
-            0,
-        )
+        normalized["reference_freq"] = float(normalized.get("reference_freq", 0))
+        normalized["motor_speed"] = float(normalized.get("motor_speed", 0))
+        normalized["power_percent"] = float(normalized.get("power_percent", 0))
+        normalized["torque_percent"] = float(normalized.get("torque_percent", 0))
+        normalized["fault"] = self._to_int_or_default(normalized.get("fault"), 0)
+        normalized["fault_code"] = self._to_int_or_default(normalized.get("fault_code"), 0)
+        normalized["status_code"] = self._to_int_or_default(normalized.get("status_code"), 0)
+        normalized["is_live"] = self._to_int_or_default(normalized.get("is_live"), 0)
 
         return normalized
     
+    
+
+# (Baaki imports waise hi rahenge)
+
+    def _determine_trigger_type(self, db: Session, device_id: UUID, current_trigger: Optional[TriggerType] = None) -> TriggerType:
+        """
+        Check karta hai ke motor kis cheez se on/off hui (APP, TIMER, SCHEDULE, ya PHYSICAL)
+        """
+        
+        # 1. Agar HTTP/Payload ne khud bataya hai ke trigger type kya hai (e.g., App ne bheja),
+        # to physical ko chhor kar baaki sab ko as-is accept kar lein.
+        if current_trigger in [TriggerType.APP, TriggerType.SCHEDULE, TriggerType.TIMER]:
+            return current_trigger
+
+        # 2. Agar MQTT (Hardware) se call aayi hai (matlab current_trigger = None ya PHYSICAL hai):
+        
+        # -> Pehle Timer check karein
+        active_timer = db.query(MotorTimer).filter(
+            MotorTimer.device_id == device_id, 
+            MotorTimer.is_running == True
+        ).first()
+
+        if active_timer:
+            return TriggerType.TIMER
+
+        # -> Phir Schedule check karein (Agar aapke paas Schedule ka table hai)
+        # Note: Niche wali line ko apne Schedule table ke hisab se adjust kar lein.
+        # active_schedule = db.query(MotorSchedule).filter(
+        #     MotorSchedule.device_id == device_id,
+        #     MotorSchedule.is_active == True,
+        #     # Yahan wo condition lagani hogi jo bataye ke schedule IS WAQT run ho raha hai ya nahi
+        # ).first()
+        # 
+        # if active_schedule:
+        #     return TriggerType.SCHEDULE
+
+        # 3. Agar na App se request aayi, na Timer hai, na Schedule hai, 
+        # to 100% kisi ne physical button press kiya hai.
+        return TriggerType.PHYSICAL
 
     def _build_telemetry_model(self, device: Device, data: MotorTelemetryCreate) -> MotorTelemetry:
-        """
-        Convert validated telemetry schema into SQLAlchemy model.
-        """
         return MotorTelemetry(
             device_id=str(device.id),
+            
+            # Yahan Model mein trigger_type map kar diya gaya hai
+            trigger_type=data.trigger_type, 
+            
             timestamp=data.timestamp,
             freq=data.freq,
             current=data.current,
@@ -173,265 +172,70 @@ class MotorTelemetryService:
         )
 
     def _save_telemetry(self, db: Session, device: Device, data: MotorTelemetryCreate) -> MotorTelemetry:
-        """
-        Shared internal method to build, persist, commit, and return telemetry.
-
-        Used by both create_telemetry (HTTP) and create_telemetry_from_mqtt (MQTT)
-        so both paths are identical from this point forward.
-        """
         telemetry = self._build_telemetry_model(device, data)
         created = self.repo.create(db, telemetry)
         db.commit()
         db.refresh(created)
         return created
 
-    def create_telemetry_from_mqtt(
-        self,
-        db: Session,
-        device_uid: str,
-        payload: dict,
-    ) -> MotorTelemetry:
-        """
-        Store telemetry received from ESP32 through MQTT.
-
-        Called by MQTTTelemetryConsumerService.on_message with:
-        - db = SessionLocal() opened by the consumer
-        - device_uid extracted from MQTT topic
-        - payload = raw dict from json.loads()
-        """
+    def create_telemetry_from_mqtt(self, db: Session, device_uid: str, payload: dict) -> MotorTelemetry:
         try:
-            logger.info(
-                "MQTT telemetry create requested: device_uid=%s payload=%s",
-                device_uid,
-                payload,
-            )
-
             device = self._get_device_by_uid_or_id(db, device_uid)
 
             if not device:
-                logger.warning(
-                    "MQTT telemetry rejected. Device UID not found: device_uid=%s",
-                    device_uid,
-                )
-                raise AppException(
-                    status_code=404,
-                    detail=f"Device UID '{device_uid}' not found. Register device first.",
-                )
+                raise AppException(status_code=404, detail=f"Device UID '{device_uid}' not found.")
 
             normalized_payload = self._normalize_mqtt_payload(payload)
+
+            # ---- YAHAN TRIGGER TYPE DECIDE HO RAHA HAI ----
+            trigger = self._determine_trigger_type(db, device.id)
+            normalized_payload["trigger_type"] = trigger
+            # -----------------------------------------------
 
             try:
                 data = MotorTelemetryCreate(**normalized_payload)
             except ValidationError as exc:
-                logger.error(
-                    "Invalid MQTT telemetry payload: device_uid=%s error=%s",
-                    device_uid,
-                    exc.errors(),
-                    exc_info=True,
-                )
-                raise AppException(
-                    status_code=400,
-                    detail={
-                        "code": "INVALID_MQTT_TELEMETRY",
-                        "message": "Invalid MQTT telemetry payload",
-                        "errors": exc.errors(),
-                    },
-                )
+                raise AppException(status_code=400, detail={"message": "Invalid payload", "errors": exc.errors()})
 
             created = self._save_telemetry(db, device, data)
-
-            logger.info(
-                "MQTT telemetry stored: telemetry_id=%s device_uid=%s status_code=%s fault=%s is_live=%s",
-                created.id,
-                device.device_uid,
-                created.status_code,
-                created.fault,
-                created.is_live,
-            )
-
             return created
 
         except AppException:
             db.rollback()
             raise
-
-        except IntegrityError as exc:
-            db.rollback()
-            logger.error(
-                "MQTT telemetry integrity error: device_uid=%s error=%s",
-                device_uid,
-                str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=400,
-                detail={
-                    "code": "MQTT_TELEMETRY_INTEGRITY_ERROR",
-                    "message": "MQTT telemetry insert failed",
-                    "database_error": str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                },
-            )
-
-        except SQLAlchemyError as exc:
-            db.rollback()
-            logger.error(
-                "MQTT telemetry database error: device_uid=%s error=%s",
-                device_uid,
-                str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=500,
-                detail={
-                    "code": "MQTT_TELEMETRY_DATABASE_ERROR",
-                    "message": "Database error while storing MQTT telemetry",
-                    "database_error": str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                },
-            )
-
         except Exception as exc:
             db.rollback()
-            logger.error(
-                "Unexpected MQTT telemetry error: device_uid=%s error=%s",
-                device_uid,
-                str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=500,
-                detail={
-                    "code": "MQTT_TELEMETRY_UNEXPECTED_ERROR",
-                    "message": f"Unexpected MQTT telemetry error: {type(exc).__name__}: {str(exc)}",
-                },
-            )
+            raise AppException(status_code=500, detail={"message": str(exc)})
 
-    def create_telemetry(
-        self,
-        db: Session,
-        device_id: str,
-        data: MotorTelemetryCreate,
-    ) -> MotorTelemetry:
-        """
-        Store telemetry received through HTTP.
-
-        FIX: Now normalizes payload exactly like create_telemetry_from_mqtt.
-        Converts Pydantic model to dict, runs normalization, re-validates,
-        then saves. This is the same path the MQTT consumer takes.
-
-        Args:
-            db: SQLAlchemy session — must be SessionLocal() owned by the caller.
-            device_id: Device UID or internal UUID.
-            data: Validated MotorTelemetryCreate from HTTP request body.
-        """
+    def create_telemetry(self, db: Session, device_id: str, data: MotorTelemetryCreate) -> MotorTelemetry:
         try:
-            logger.info(
-                "HTTP telemetry create requested: device_id=%s status_code=%s fault=%s is_live=%s",
-                device_id,
-                data.status_code,
-                data.fault,
-                data.is_live,
-            )
-
             device = self._get_device_by_uid_or_id(db, device_id)
 
             if not device:
-                logger.warning(
-                    "HTTP telemetry rejected. Device not found: device_id=%s",
-                    device_id,
-                )
-                raise AppException(
-                    status_code=404,
-                    detail=f"Device '{device_id}' not found. Register device first.",
-                )
+                raise AppException(status_code=404, detail=f"Device '{device_id}' not found.")
 
-            # Normalize exactly like MQTT path so both paths are identical
             normalized_payload = self._normalize_mqtt_payload(data.model_dump())
+
+            # ---- HTTP MEIN BHI TRIGGER TYPE DECIDE KAREIN ----
+            # Agar user ne body mein TriggerType bheja hai (e.g., App se click kiya), to usko pass karein
+            trigger = self._determine_trigger_type(db, device.id, current_trigger=data.trigger_type)
+            normalized_payload["trigger_type"] = trigger
+            # --------------------------------------------------
 
             try:
                 normalized_data = MotorTelemetryCreate(**normalized_payload)
             except ValidationError as exc:
-                logger.error(
-                    "Invalid HTTP telemetry payload after normalization: device_id=%s error=%s",
-                    device_id,
-                    exc.errors(),
-                    exc_info=True,
-                )
-                raise AppException(
-                    status_code=400,
-                    detail={
-                        "code": "INVALID_HTTP_TELEMETRY",
-                        "message": "Invalid HTTP telemetry payload",
-                        "errors": exc.errors(),
-                    },
-                )
+                raise AppException(status_code=400, detail={"message": "Invalid payload", "errors": exc.errors()})
 
             created = self._save_telemetry(db, device, normalized_data)
-
-            logger.info(
-                "HTTP telemetry stored: telemetry_id=%s device_uid=%s status_code=%s fault=%s is_live=%s",
-                created.id,
-                device.device_uid,
-                created.status_code,
-                created.fault,
-                created.is_live,
-            )
-
             return created
 
         except AppException:
             db.rollback()
             raise
-
-        except IntegrityError as exc:
-            db.rollback()
-            logger.error(
-                "HTTP telemetry integrity error: device_id=%s error=%s",
-                device_id,
-                str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=400,
-                detail={
-                    "code": "HTTP_TELEMETRY_INTEGRITY_ERROR",
-                    "message": "HTTP telemetry insert failed",
-                    "database_error": str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                },
-            )
-
-        except SQLAlchemyError as exc:
-            db.rollback()
-            logger.error(
-                "HTTP telemetry database error: device_id=%s error=%s",
-                device_id,
-                str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=500,
-                detail={
-                    "code": "HTTP_TELEMETRY_DATABASE_ERROR",
-                    "message": "Database error while creating telemetry",
-                    "database_error": str(exc.orig) if hasattr(exc, "orig") else str(exc),
-                },
-            )
-
         except Exception as exc:
             db.rollback()
-            logger.error(
-                "Unexpected HTTP telemetry error: device_id=%s error=%s",
-                device_id,
-                str(exc),
-                exc_info=True,
-            )
-            raise AppException(
-                status_code=500,
-                detail={
-                    "code": "HTTP_TELEMETRY_UNEXPECTED_ERROR",
-                    "message": f"Unexpected error while creating telemetry: {type(exc).__name__}: {str(exc)}",
-                },
-            )
-
+            raise AppException(status_code=500, detail={"message": str(exc)})
     def get_device_telemetry(self, db: Session, device_id: str):
         """
         Return all telemetry records for one device, newest first.

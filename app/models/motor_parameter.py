@@ -9,7 +9,7 @@ from app.db.base_class import Base
 # models/motor_telemetry.py me
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
-from app.schemas.motor_timer_schema import TriggerType
+from app.schemas.enums import TriggerType
 
 class MotorTelemetry(Base):
     __tablename__ = "motor_telemetry"

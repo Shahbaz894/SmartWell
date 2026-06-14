@@ -306,6 +306,8 @@ When you update your Python code and want to deploy the latest version, first bu
 
 Build image locally
 docker build -t shahbaz/smartwell:v1 .
+docker build -t shahbazzulfiqar/smartwell:v1.0.8 .
+docker push shahbazzulfiqar/smartwell:v1.0.8
 Tag image for Docker Hub
 docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
 Push image to Docker Hub
