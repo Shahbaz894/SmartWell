@@ -40,7 +40,7 @@ class MotorTimerRepository:
         return (
             db.query(MotorTimer)
             .filter(
-                MotorTimer.device_id == device_id,
+                MotorTimer.device_id == str(device_id),
                 MotorTimer.is_running == True,
             )
             .first()

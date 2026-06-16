@@ -1,6 +1,8 @@
 from datetime import datetime
+import uuid
 
-from sqlalchemy import Boolean
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import  Boolean
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import Integer
@@ -15,6 +17,7 @@ class MotorTimer(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     device_id = Column(String, nullable=False, index=True)
+    
 
     customer_name = Column(String, nullable=True)
 
