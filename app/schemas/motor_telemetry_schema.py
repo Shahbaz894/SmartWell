@@ -125,4 +125,5 @@ class MotorTelemetryResponse(MotorTelemetryCreate):
     def has_fault(self) -> bool:
         return (self.fault == 1 or (self.fault_code or 0) > 0 or self.status_code == 4)
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True,
+                              use_enum_values=True)

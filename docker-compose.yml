@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
 
@@ -18,7 +18,7 @@ services:
     
     # ⚡ FIX: Added automated healthcheck for Postgres instance
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shahbaz_admin -d smartwell_db"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,8 +54,10 @@ services:
   # ─────────────────────────────────────────────────────────────────────────
   backend:
     build: .
-    image: shahbazzulfiqar/smartwell:v1.0.8
+    image: shahbazzulfiqar/smartwell:v1.0.10
     container_name: fastapi_backend
+    volumes:
+      - ./app_source/app:/app/app
     restart: always
     ports:
       - "80:8000"
@@ -86,10 +88,12 @@ services:
     # Har 30 seconds baad Docker check karega ke kya backend responsive hai. 
     # Agar thread freeze hua ya API phansi, toh docker backend ko instant self-restart maar dega!
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      # test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      # test: ["CMD-SHELL", "pg_isready -U shahbaz_admin -d smartwell_db"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 6
       start_period: 15s
 
     networks:
