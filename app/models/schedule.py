@@ -9,13 +9,7 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
-    device_id = Column(
-        UUID(as_uuid=True),          # ✅ matches Device.id
-        ForeignKey("devices.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True
-    )
+    device_id = Column(String, nullable=False, index=True)
 
     schedule_type = Column(String(20), nullable=False)
     pattern = Column(JSONB, nullable=False)

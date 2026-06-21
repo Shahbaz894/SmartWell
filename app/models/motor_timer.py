@@ -2,7 +2,7 @@ from datetime import datetime
 import uuid
 
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import  Boolean
+from sqlalchemy import  Boolean, ForeignKey
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import Integer

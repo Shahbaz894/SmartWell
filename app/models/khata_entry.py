@@ -13,7 +13,7 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 from sqlalchemy import (
-    Column, String, TIMESTAMP, Numeric,
+    Column, Integer, String, TIMESTAMP, Numeric,
     Boolean, ForeignKey, Date, text
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -38,15 +38,11 @@ class KhataEntry(Base):
     )
 
     # FIX: Must be UUID to match Device.id
-    device_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("devices.id", ondelete="CASCADE"),
-        nullable=False
-    )
+    device_id = Column(String, nullable=False, index=True)
 
     # FIX: Assuming MotorLog.id is also a UUID
     motor_log_id = Column(
-        UUID(as_uuid=True),
+        Integer,
         ForeignKey("motor_logs.id", ondelete="SET NULL"),
         nullable=True
     )

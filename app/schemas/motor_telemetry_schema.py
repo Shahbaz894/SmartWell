@@ -95,7 +95,7 @@ class MotorTelemetryCreate(BaseModel):
 
 class MotorTelemetryResponse(MotorTelemetryCreate):
     id: UUID
-    device_id: UUID
+    device_id: str
     created_at: datetime 
     # trigger_type is inherited from MotorTelemetryCreate but we redefine it to ensure it's required
     trigger_type: TriggerType 

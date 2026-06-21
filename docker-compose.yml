@@ -54,7 +54,7 @@ services:
   # ─────────────────────────────────────────────────────────────────────────
   backend:
     build: .
-    image: shahbazzulfiqar/smartwell:v1.0.12
+    image: shahbazzulfiqar/smartwell:v1.0.22
     container_name: fastapi_backend
     volumes:
       - ./app_source/app:/app/app

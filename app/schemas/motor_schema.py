@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field,ConfigDict
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -16,8 +16,8 @@ class MotorStopRequest(BaseModel):
     customer_name: Optional[str] = None
 
 class MotorLogResponse(BaseModel):
-    id: UUID
-    device_id: UUID
+    id: int
+    device_id: str
     start_time: datetime
     end_time: Optional[datetime]
     duration_minutes: Optional[int]
@@ -25,5 +25,4 @@ class MotorLogResponse(BaseModel):
     customer_name: Optional[str] = None
     status: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

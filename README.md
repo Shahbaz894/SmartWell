@@ -306,16 +306,24 @@ When you update your Python code and want to deploy the latest version, first bu
 
 Build image locally
 docker build -t shahbaz/smartwell:v1 .
-docker build -t shahbazzulfiqar/smartwell:v1.0.8 .
-docker push shahbazzulfiqar/smartwell:v1.0.8
+docker build -t shahbazzulfiqar/smartwell:v1.0.17 .
+docker push shahbazzulfiqar/smartwell:v1.0.17
 Tag image for Docker Hub
 docker tag shahbaz/smartwell:v1 shahbazzulfiqar/smartwell:latest
 Push image to Docker Hub
 docker push shahbazzulfiqar/smartwell:latest
 DigitalOcean Production Deployment
 
-This section explains the exact production workflow on a DigitalOcean droplet.
 
+
+//////////////////////////////////////////
+log check karne k lye
+
+
+tail -n 100 app_source/logs/app.log | grep -i "error"
+
+This section explains the exact production workflow on a DigitalOcean droplet.
+mosquitto_sub -h curl -X GET "http://157.245.55.83/telemetry/ESP32_002_TW/latest"-t "tubewell/#" -v // backend par check karna h h data base say kaya data aa raha 
 1. Connect to droplet using SSH
 ssh root@157.245.55.83
 2. Go to project directory
@@ -476,7 +484,7 @@ docker volume rm iot_project_postgres_data
 
 
 
-
+nano ~/iot_project/docker-compose.yml
 Your DB and Mosquitto containers have different names now:
 
 1406e53817ed_iot_project_db_1

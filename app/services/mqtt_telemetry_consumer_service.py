@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from typing import Optional  # Yeh line correct hai
 from app.core.config import settings
 from app.core.logger import logger
 from app.services.motor_telemetry_service import MotorTelemetryService
@@ -27,6 +29,21 @@ class MQTTTelemetryConsumerService:
             logger.info("DEBUG: MQTT loop_start() initiated.")
         except Exception as e:
             logger.error(f"CRITICAL: Failed to start MQTT Consumer: {str(e)}")
+    def _extract_device_id(self, topic: str) -> Optional[str]:
+        """
+        Dynamically extracts the device_uid from the topic using settings.
+        Pattern expected: PREFIX/device_uid/SUFFIX
+        """
+        # Dynamic regex pattern creation
+        pattern = f"^{settings.MQTT_COMMAND_TOPIC_PREFIX}/([^/]+)/{settings.MQTT_TELEMETRY_TOPIC_SUFFIX}$"
+        
+        match = re.match(pattern, topic)
+        if match:
+            return match.group(1)
+            
+        # Logging for debugging if the topic doesn't match
+        logger.warning(f"⚠️ Topic pattern mismatch: {topic} (Expected: {pattern})")
+        return None
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -36,62 +53,30 @@ class MQTTTelemetryConsumerService:
             logger.info("DEBUG: Subscribed to topic #")
         else:
             logger.error(f"DEBUG: Connection failed with code {rc}")
-
     def on_message(self, client, userdata, msg):
         db = None
-
         try:
-            payload_str = msg.payload.decode("utf-8").strip()
+            # 1. Device ID extract karein (Aapki nayi method use karke)
+            device_uid = self._extract_device_id(msg.topic)
+            if not device_uid:
+                return # Error pehle hi _extract_device_id log kar chuka hoga
 
-            logger.info(
-                f"📥 MQTT Message Received | topic={msg.topic} | payload={payload_str}"
-            )
+            payload_str = msg.payload.decode("utf-8").strip()
+            logger.info(f"📥 MQTT Message Received | topic={msg.topic} | device_uid={device_uid}")
 
             payload = json.loads(payload_str)
 
-            # Expected topic:
-            # tubewell/<device_uid>/telemetry
-            parts = msg.topic.split("/")
-
-            if len(parts) < 3:
-                logger.error(
-                    f"❌ Invalid MQTT topic format: {msg.topic}"
-                )
-                return
-
-            device_uid = parts[1]
-
-            logger.info(
-                f"🔍 Processing telemetry for device_uid={device_uid}"
-            )
-
+            # 2. Database Operations
             db = SessionLocal()
-
             telemetry = self.service.create_telemetry_from_mqtt(
                 db=db,
                 device_uid=device_uid,
                 payload=payload,
             )
-
-            logger.info(
-                f"✅ Telemetry stored successfully | "
-                f"telemetry_id={telemetry.id} | "
-                f"device_uid={device_uid}"
-            )
-
-        except json.JSONDecodeError as exc:
-            logger.error(
-                f"❌ Invalid JSON payload on topic {msg.topic}: {exc}",
-                exc_info=True,
-            )
+            logger.info(f"✅ Telemetry stored: {device_uid}")
 
         except Exception as exc:
-            logger.error(
-                f"❌ Error processing MQTT message | "
-                f"topic={msg.topic} | error={exc}",
-                exc_info=True,
-            )
-
+            logger.error(f"❌ Error in on_message: {exc}", exc_info=True)
         finally:
             if db:
                 db.close()

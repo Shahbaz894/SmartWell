@@ -20,7 +20,7 @@ class ScheduleUpdate(BaseModel):
 
 class ScheduleResponse(BaseModel):
     id: UUID
-    device_id: UUID
+    device_id: str
     schedule_type: str
     pattern: Dict[str, Any]
     is_active: bool

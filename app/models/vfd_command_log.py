@@ -10,12 +10,7 @@ class VFDCommandLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    device_id = Column(
-        UUID(as_uuid=True),          # ✅ matches Device.id
-        ForeignKey("devices.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
+    device_id = Column(String, nullable=False, index=True)
     # device_id = Column(String(100), unique=True, nullable=False, index=True)
 
     command = Column(String(50), nullable=False)
