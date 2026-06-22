@@ -25,7 +25,8 @@ class Device(Base):
         "MotorLog", 
         back_populates="device", 
         primaryjoin="Device.device_uid == foreign(MotorLog.device_id)", 
-        cascade="all, delete"
+        cascade="all, delete",
+        lazy="select"
     )
 
     telemetry = relationship(
