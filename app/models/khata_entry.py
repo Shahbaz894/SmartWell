@@ -26,7 +26,7 @@ class KhataEntry(Base):
     )
 
     # FIX: Must be UUID to match Device.id
-    device_id = Column(String, nullable=False, index=True)
+    device_id = Column(String(100), nullable=False, index=True)
 
     # FIX: Assuming MotorLog.id is also a UUID
     motor_log_id = Column(
@@ -102,9 +102,8 @@ class KhataEntry(Base):
             f"balance={self.balance} "
             f"cleared={self.is_cleared}>"
         )
-    khata_entries = relationship(
-    "KhataEntry", 
-    back_populates="device", 
-    primaryjoin="Device.id == foreign(KhataEntry.device_id)",
-    cascade="all, delete"
-)
+    device = relationship(
+        "Device", 
+        back_populates="khata_entries",
+        primaryjoin="foreign(KhataEntry.device_id) == Device.device_uid"
+    )
