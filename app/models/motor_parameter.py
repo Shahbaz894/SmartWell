@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import Column, Integer, Float, BigInteger, ForeignKey, DateTime,String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship,foreign
 from sqlalchemy.sql import func
 
 from app.db.base_class import Base
@@ -52,7 +52,8 @@ class MotorTelemetry(Base):
     trigger_type = Column(String, nullable=True)
 
     device = relationship(
-        "Device", 
-        back_populates="telemetry",
-        primaryjoin="foreign(MotorTelemetry.device_id) == cast(Device.id, String)"
-    )
+    "Device", 
+    back_populates="motor_logs",
+    # Yeh instruction mapper ko batati hai ke bina physical FK ke join kaise karna hai
+    primaryjoin="foreign(MotorLog.device_id) == Device.device_uid"
+)

@@ -2,7 +2,7 @@
 import uuid
 from sqlalchemy import Column, String, TIMESTAMP, Float, text,ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship,foreign
 from app.db.base_class import Base
 
 class VFDCommandLog(Base):
@@ -21,4 +21,8 @@ class VFDCommandLog(Base):
     message = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=text("now()"))
 
-    device = relationship("Device", back_populates="vfd_command_logs")
+    device = relationship(
+        "Device", 
+        back_populates="vfd_command_logs",
+        primaryjoin="foreign(VFDCommandLog.device_id) == Device.device_uid"
+    )

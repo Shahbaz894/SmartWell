@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import Column, String, Boolean, TIMESTAMP, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship,foreign
 from app.db.base_class import Base
 class Schedule(Base):
     __tablename__ = "schedules"
@@ -18,4 +18,8 @@ class Schedule(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    device = relationship("Device", back_populates="schedules")
+    device = relationship(
+    "Device", 
+    back_populates="schedules",
+    primaryjoin="foreign(Schedule.device_id) == Device.device_uid"
+)

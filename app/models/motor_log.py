@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, TIMESTAMP, Integer, ForeignKey, text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship,foreign
+from sqlalchemy.orm import relationship, foreign
 from app.db.base_class import Base
 
 class MotorLog(Base):
@@ -26,4 +27,9 @@ class MotorLog(Base):
     created_at = Column(TIMESTAMP, server_default=text("now()"))
 
     # Relationship to Device
-    device = relationship("Device", back_populates="motor_logs")
+    device = relationship(
+    "Device", 
+    back_populates="motor_logs",
+    # Yeh instruction mapper ko batati hai ke bina physical FK ke join kaise karna hai
+    primaryjoin="foreign(MotorLog.device_id) == Device.device_uid"
+)

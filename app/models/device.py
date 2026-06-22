@@ -9,8 +9,10 @@ class Device(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    device_name = Column(String(100), nullable=False)
+    
+    
     device_uid = Column(String(100), unique=True, nullable=False, index=True)
+    device_name = Column(String(100), nullable=False)
     sim_number = Column(String(20), nullable=True)
     location = Column(String(255), nullable=True)
     device_secret = Column(String(255), nullable=False)
@@ -19,12 +21,18 @@ class Device(Base):
 
     # Relationships (Logical links only, not physical DB constraints)
     owner = relationship("User", back_populates="devices")
-    
-    motor_logs = relationship("MotorLog", back_populates="device", cascade="all, delete")
-    telemetry = relationship("MotorTelemetry", back_populates="device", cascade="all, delete")
-    schedules = relationship("Schedule", back_populates="device", cascade="all, delete")
-    vfd_command_logs = relationship("VFDCommandLog", back_populates="device", cascade="all, delete-orphan")
-    khata_entries = relationship("KhataEntry", back_populates="device", cascade="all, delete")
+    motor_logs = relationship("MotorLog", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorLog.device_id)")
+    telemetry = relationship("MotorTelemetry", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorTelemetry.device_id)")
+    schedules = relationship("Schedule", back_populates="device", primaryjoin="Device.device_uid == foreign(Schedule.device_id)")
+    vfd_command_logs = relationship("VFDCommandLog", back_populates="device", primaryjoin="Device.device_uid == foreign(VFDCommandLog.device_id)")
+    khata_entries = relationship("KhataEntry", back_populates="device", primaryjoin="Device.device_uid == foreign(KhataEntry.device_id)")
+        # Device model ke andar:
+    vfd_command_logs = relationship(
+        "VFDCommandLog", 
+        back_populates="device", 
+        primaryjoin="Device.device_uid == foreign(VFDCommandLog.device_id)",
+        cascade="all, delete-orphan"
+    )
 
     # Yahan hum SQLAlchemy ko batate hain ke ye columns logically linked hain
     # Isse mapper error khatam ho jayega

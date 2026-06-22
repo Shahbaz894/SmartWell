@@ -1,16 +1,4 @@
-# app/models/khata_entry.py
-#
-# SQLAlchemy ORM model for the khata_entries table.
-#
-# ── Schema change log ─────────────────────────────────────────────────────────
-#  • customer_id (FK → customers.id) has been DROPPED.
-#  • user_id     (FK → users.id)     has been ADDED.
-#
-#  Migration SQL:
-#      ALTER TABLE khata_entries DROP COLUMN customer_id;
-#      ALTER TABLE khata_entries ADD COLUMN user_id VARCHAR
-#          REFERENCES users(id) ON DELETE CASCADE;
-# ──────────────────────────────────────────────────────────────────────────────
+
 
 from sqlalchemy import (
     Column, Integer, String, TIMESTAMP, Numeric,
@@ -114,4 +102,9 @@ class KhataEntry(Base):
             f"balance={self.balance} "
             f"cleared={self.is_cleared}>"
         )
-    device = relationship("Device", back_populates="khata_entries")
+    khata_entries = relationship(
+    "KhataEntry", 
+    back_populates="device", 
+    primaryjoin="Device.id == foreign(KhataEntry.device_id)",
+    cascade="all, delete"
+)
