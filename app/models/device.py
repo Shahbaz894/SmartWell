@@ -21,8 +21,21 @@ class Device(Base):
 
     # Relationships (Logical links only, not physical DB constraints)
     owner = relationship("User", back_populates="devices")
-    motor_logs = relationship("MotorLog", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorLog.device_id)")
-    telemetry = relationship("MotorTelemetry", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorTelemetry.device_id)")
+    motor_logs = relationship(
+        "MotorLog", 
+        back_populates="device", 
+        primaryjoin="Device.device_uid == foreign(MotorLog.device_id)", 
+        cascade="all, delete"
+    )
+
+    telemetry = relationship(
+        "MotorTelemetry", 
+        back_populates="device", 
+        primaryjoin="Device.device_uid == foreign(MotorTelemetry.device_id)",
+        cascade="all, delete"
+    )
+    # motor_logs = relationship("MotorLog", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorLog.device_id)")
+    # telemetry = relationship("MotorTelemetry", back_populates="device", primaryjoin="Device.device_uid == foreign(MotorTelemetry.device_id)")
     schedules = relationship("Schedule", back_populates="device", primaryjoin="Device.device_uid == foreign(Schedule.device_id)")
     vfd_command_logs = relationship("VFDCommandLog", back_populates="device", primaryjoin="Device.device_uid == foreign(VFDCommandLog.device_id)")
     khata_entries = relationship("KhataEntry", back_populates="device", primaryjoin="Device.device_uid == foreign(KhataEntry.device_id)")
