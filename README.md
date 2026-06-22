@@ -726,3 +726,28 @@ Developed by:
 Shahbaz
 
 IoT and Embedded Systems Engineer
+
+
+
+
+
+
+mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot_project_mosquitto_1
+    restart: always
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - smartwell_net
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+
+
+
+  JWT_SECRET_KEY: f66b65571dc72b984583b52f954f8d010bf5ca4f16598f0c862037fda6820894
+  JWT_SECRET_KEY: f66b65571dc72b984583b52f954f8d010bf5ca4f16598f0c862037fda6820894

@@ -27,8 +27,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
     networks:
       - smartwell_net
@@ -74,6 +74,7 @@ services:
       JWT_SECRET_KEY: your_super_secret_key
       MQTT_BROKER: mosquitto
       MQTT_PORT: 1883
+      MQTT_COMMAND_TOPIC_PREFIX: tubewell
       MQTT_TELEMETRY_TOPIC_PREFIX: tubewell
       MQTT_TELEMETRY_TOPIC_SUFFIX: telemetry
     healthcheck:
