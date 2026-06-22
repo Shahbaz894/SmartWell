@@ -5,7 +5,7 @@ services:
   # Automated Update Service (Watchtower)
   # ─────────────────────────────────────────────────────────────────────────
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:1.5.3
     container_name: watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
