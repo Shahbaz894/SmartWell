@@ -26,18 +26,26 @@ class MotorTelemetryService:
 
     def _get_device_by_uid_or_id(self, db: Session, device_id: str) -> Optional[Device]:
         try:
-            # Pehle string UID se dhoondein (Ye best hai)
-            device = db.query(Device).filter(Device.device_uid == device_id).first()
-            if device: return device
+            # 1. First: Try matching device_uid (String comparison)
+            # Ensure we are querying the 'devices' table correctly
+            device = db.query(Device).filter(Device.device_uid == str(device_id)).first()
+            if device:
+                return device
             
-            # Agar nahi mila, toh check karein kya wo UUID hai
+            # 2. Second: Try matching id (UUID comparison)
+            # Agar device_id input ek valid UUID string hai
             try:
-                # UUID string ko handle karne ke liye
-                return db.query(Device).filter(Device.id == device_id).first()
-            except Exception:
-                return None
-        except SQLAlchemyError as exc:
-            logger.error("DB error while resolving device", exc_info=True)
+                device = db.query(Device).filter(Device.id == UUID(device_id)).first()
+                if device:
+                    return device
+            except (ValueError, TypeError):
+                # device_id is not a valid UUID format, skip
+                pass
+                
+            return None
+            
+        except Exception as exc:
+            logger.error(f"Critical error resolving device {device_id}: {str(exc)}", exc_info=True)
             raise AppException(status_code=500, detail=f"Database error while resolving device '{device_id}'")
     def _to_int_or_default(self, value: Any, default: int) -> int:
         if value is None: return default

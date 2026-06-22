@@ -49,5 +49,10 @@ class MotorTelemetry(Base):
     power_percent = Column(Float)
     torque_percent = Column(Float)
     is_live = Column(Integer)
+    trigger_type = Column(String, nullable=True)
 
-    device = relationship("Device", back_populates="telemetry")
+    device = relationship(
+        "Device", 
+        back_populates="telemetry",
+        primaryjoin="foreign(MotorTelemetry.device_id) == cast(Device.id, String)"
+    )
