@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 from app.schemas.enums import TriggerType
+
 
 # Global Maps
 STATUS_CODE_MAP = {
@@ -37,93 +39,137 @@ FAULT_CODE_MAP = {
     19: {"name": "ItE", "description": "Current detection error."},
 }
 
+
 class MotorTelemetryCreate(BaseModel):
-    timestamp: Optional[int] = Field(default=0)
-    freq: Optional[float] = Field(default=0.0)
-    current: Optional[float] = Field(default=0.0)
-    voltage: Optional[float] = Field(default=0.0)
-    dcbus: Optional[float] = Field(default=0.0)
-    power: Optional[float] = Field(default=0.0)
-    energy_in: Optional[float] = Field(default=0.0)
-    
-    # Enum field using TriggerType
-    trigger_type: Optional[TriggerType] = Field(default=TriggerType.physical)
-    
-    fault: Optional[int] = Field(default=0)
-    fault_code: Optional[int] = Field(default=0)
-    status_code: Optional[int] = Field(default=0)
+    # device_id is NOT here because it comes from path:
+    # POST /telemetry/{device_id}
 
-    reference_freq: Optional[float] = Field(default=0.0)
-    motor_speed: Optional[float] = Field(default=0.0)
-    power_percent: Optional[float] = Field(default=0.0)
-    torque_percent: Optional[float] = Field(default=0.0)
-    is_live: Optional[int] = Field(default=0)
+    timestamp: int = Field(default=0)
 
-    @field_validator("is_live", "fault")
+    freq: float = Field(default=0.0)
+    current: float = Field(default=0.0)
+    voltage: float = Field(default=0.0)
+    dcbus: float = Field(default=0.0)
+    power: float = Field(default=0.0)
+    energy_in: float = Field(default=0.0)
+
+    trigger_type: TriggerType = Field(default=TriggerType.physical)
+
+    fault: int = Field(default=0)
+    fault_code: int = Field(default=0)
+    status_code: int = Field(default=0)
+
+    reference_freq: float = Field(default=0.0)
+    motor_speed: float = Field(default=0.0)
+    power_percent: float = Field(default=0.0)
+    torque_percent: float = Field(default=0.0)
+    is_live: int = Field(default=0)
+
+    @field_validator("is_live", "fault", mode="before")
     @classmethod
-    def validate_binary_flags(cls, value: Optional[int]) -> int:
-        val = value if value is not None else 0
-        return val if val in (0, 1) else 0
+    def validate_binary_flags(cls, value) -> int:
+        try:
+            val = int(value)
+            return val if val in (0, 1) else 0
+        except (ValueError, TypeError):
+            return 0
 
-    @field_validator("fault_code")
+    @field_validator("fault_code", mode="before")
     @classmethod
-    def validate_fault_code(cls, value: Optional[int]) -> int:
-        val = value if value is not None else 0
-        return val if val in FAULT_CODE_MAP else 0
+    def validate_fault_code(cls, value) -> int:
+        try:
+            val = int(value)
+            return val if val in FAULT_CODE_MAP else 0
+        except (ValueError, TypeError):
+            return 0
 
-    @field_validator("status_code")
+    @field_validator("status_code", mode="before")
     @classmethod
-    def validate_status_code(cls, value: Optional[int]) -> int:
-        val = value if value is not None else 0
-        return val if val in STATUS_CODE_MAP else 0
+    def validate_status_code(cls, value) -> int:
+        try:
+            val = int(value)
+            return val if val in STATUS_CODE_MAP else 0
+        except (ValueError, TypeError):
+            return 0
 
     @field_validator(
-        "freq", "current", "voltage", "dcbus", "power", "energy_in",
-        "reference_freq", "motor_speed", "power_percent", "torque_percent",
-        mode="before"
+        "timestamp",
+        "freq",
+        "current",
+        "voltage",
+        "dcbus",
+        "power",
+        "energy_in",
+        "reference_freq",
+        "motor_speed",
+        "power_percent",
+        "torque_percent",
+        mode="before",
     )
     @classmethod
     def validate_non_negative_numeric_fields(cls, value):
         try:
             val = float(value)
-            return val if val >= 0 else 0.0
+            return val if val >= 0 else 0
         except (ValueError, TypeError):
-            return 0.0
+            return 0
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        use_enum_values=True,
+    )
 
 
 class MotorTelemetryResponse(MotorTelemetryCreate):
     id: UUID
+
+    # IMPORTANT: device_id is STRING, example: ESP32_001_TW
     device_id: str
-    created_at: datetime 
-    # trigger_type is inherited from MotorTelemetryCreate but we redefine it to ensure it's required
-    trigger_type: TriggerType 
+
+    created_at: datetime
 
     @computed_field
     @property
     def status_name(self) -> str:
-        return STATUS_CODE_MAP.get(self.status_code or 0, {"name": "Unknown"})["name"]
+        return STATUS_CODE_MAP.get(
+            self.status_code or 0,
+            {"name": "Unknown"},
+        )["name"]
 
     @computed_field
     @property
     def status_description(self) -> str:
-        return STATUS_CODE_MAP.get(self.status_code or 0, {"description": "Unknown"})["description"]
+        return STATUS_CODE_MAP.get(
+            self.status_code or 0,
+            {"description": "Unknown"},
+        )["description"]
 
     @computed_field
     @property
     def fault_name(self) -> str:
-        return FAULT_CODE_MAP.get(self.fault_code or 0, {"name": "Unknown"})["name"]
+        return FAULT_CODE_MAP.get(
+            self.fault_code or 0,
+            {"name": "Unknown"},
+        )["name"]
 
     @computed_field
     @property
     def fault_description(self) -> str:
-        return FAULT_CODE_MAP.get(self.fault_code or 0, {"description": "Unknown"})["description"]
+        return FAULT_CODE_MAP.get(
+            self.fault_code or 0,
+            {"description": "Unknown"},
+        )["description"]
 
     @computed_field
     @property
     def has_fault(self) -> bool:
-        return (self.fault == 1 or (self.fault_code or 0) > 0 or self.status_code == 4)
+        return (
+            self.fault == 1
+            or (self.fault_code or 0) > 0
+            or self.status_code == 4
+        )
 
-    model_config = ConfigDict(from_attributes=True,
-                              use_enum_values=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        use_enum_values=True,
+    )
