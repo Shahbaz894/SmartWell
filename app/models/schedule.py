@@ -10,8 +10,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from sqlalchemy import Column, String, Boolean, TIMESTAMP
-from sqlalchemy.dialects.postgresql import JSONB  # <--- Sahi import path
-
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 # Ab baki ka code niche likhein...
 
 

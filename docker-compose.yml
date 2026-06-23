@@ -59,7 +59,7 @@ services:
   # FastAPI Backend (Production CI/CD Ready)
   # ─────────────────────────────────────────────────────────────────────────
   backend:
-    build: .
+    
     image: shahbazzulfiqar/smartwell:latest
     container_name: fastapi_backend
     restart: always
