@@ -4,11 +4,15 @@ Schedule model (no behaviour change — kept clean).
 `device_id` stays as String — stores Device.device_uid.
 """
 import uuid
-from sqlalchemy import Column, String, Boolean, TIMESTAMP, JSONB
+
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
+from sqlalchemy import Column, String, Boolean, TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB  # <--- Sahi import path
+
+# Ab baki ka code niche likhein...
 
 
 class Schedule(Base):
