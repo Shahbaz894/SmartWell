@@ -64,7 +64,7 @@ services:
     container_name: fastapi_backend
     restart: always
     ports:
-      - "80:8000"
+      - "80:8080"
     depends_on:
       db:
         condition: service_healthy
